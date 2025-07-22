@@ -10,8 +10,8 @@ using OpenUtau.Core.Ustx;
 using Serilog;
 
 namespace OpenUtau.Plugin.Builtin {
-    [Phonemizer("Thai VCCV Phonemizer", "TH VCCV", "PRINTmov", language: "TH")]
-    public class ThaiVCCVPhonemizer : Phonemizer {
+    [Phonemizer("Thai VCCV & CVVC Phonemizer", "TH VCCV & CVVC", "PRINTmov & DELTA_SYNTH", language: "TH")]
+    public class Thai_VCCV_and_CVVC_Phonemizer : Phonemizer {
 
         readonly string[] vowels = new string[] {
             "a", "i", "u", "e", "o", "@", "Q", "3", "6", "1", "ia", "ua", "I", "8"
@@ -44,7 +44,7 @@ namespace OpenUtau.Plugin.Builtin {
             {'บ', "b"}, {'ป', "p"}, {'พ', "ph"}, {'ผ', "ph"}, {'ภ', "ph"}, {'ฟ', "f"}, {'ฝ', "f"},
             {'ห', "h"}, {'ฮ', "h"},
             {'ม', "m"}, {'น', "n"}, {'ณ', "n"}, {'ร', "r"}, {'ล', "l"}, {'ฤ', "r"},
-            {'ส', "s"}, {'ศ', "s"}, {'ษ', "s"}, {'ซ', "s"},
+            {'ส', "s"}, {'ศ', "s"}, {'ษ', "s"}, {'ซ', "s"}, {'อ', "-"},
             {'ง', "g"}, {'ย', "y"}, {'ญ', "y"}, {'ว', "w"}, {'ฬ', "r"}
         };
 
@@ -54,7 +54,7 @@ namespace OpenUtau.Plugin.Builtin {
             {'ฑ', "d"}, {'ฒ', "d"}, {'ต', "d"}, {'ถ', "d"}, {'ท', "d"}, {'ธ', "d"}, {'ศ', "d"}, {'ษ', "d"}, {'ส', "d"},
             {'ก', "k"}, {'ข', "k"}, {'ค', "k"}, {'ฆ', "k"},
             {'ว', "w"},
-            {'ย', "y"},
+            {'ย', "y"}, {'อ', "-"},
             {'น', "n"}, {'ญ', "n"}, {'ณ', "n"}, {'ร', "n"}, {'ล', "n"}, {'ฬ', "n"},
             {'ง', "g"},
             {'ม', "m"}
