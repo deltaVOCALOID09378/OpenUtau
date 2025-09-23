@@ -1,30 +1,73 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Text;
 using OpenUtau.Classic;
+using OpenUtau.Core.Util;
 
 namespace OpenUtau.Core.Ustx {
-    public class UOto {
-        public string Alias { get; set; }
-        public string Phonetic { get; set; }
-        public string Set { get; set; }
-        public string Color { get; set; }
-        public string Prefix { get; set; }
-        public string Suffix { get; set; }
-        public SortedSet<int> ToneSet { get; set; }
-        public string File { get; set; }
-        public string DisplayFile { get; set; }
-        public double Offset { get; set; }
-        public double Consonant { get; set; }
-        public double Cutoff { get; set; }
-        public double Preutter { get; set; }
-        public double Overlap { get; set; }
-        public List<string> SearchTerms { private set; get; }
+    public class UOto : INotifyPropertyChanged {
+        public string Alias { get; private set; }
+        public string Phonetic { get; private set; }
+        public string Set { get; private set; }
+        public string Color { get; private set; }
+        public string Prefix { get; private set; }
+        public string Suffix { get; private set; }
+        public SortedSet<int> ToneSet { get; private set; }
+        public string File { get; private set; }
+        public string DisplayFile { get; private set; }
+        public double Offset {
+            get => offset;
+            set {
+                offset = Math.Max(0, Math.Round(value, 3));
+                NotifyPropertyChanged(nameof(Offset));
+            }
+        }
+        public double Consonant {
+            get => consonant;
+            set {
+                consonant = Math.Max(0, Math.Round(value, 3));
+                NotifyPropertyChanged(nameof(Consonant));
+            }
+        }
+        public double Cutoff {
+            get => cutoff;
+            set {
+                cutoff = Math.Round(value, 3);
+                NotifyPropertyChanged(nameof(Cutoff));
+            }
+        }
+        public double Preutter {
+            get => preutter;
+            set {
+                preutter = Math.Max(0, Math.Round(value, 3));
+                NotifyPropertyChanged(nameof(Preutter));
+            }
+        }
+        public double Overlap {
+            get => overlap;
+            set {
+                overlap = Math.Round(value, 3);
+                NotifyPropertyChanged(nameof(Overlap));
+            }
+        }
+        public OtoFrq? Frq { get; set; }
+        public List<string> SearchTerms { get; private set; }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        private Oto oto;
+        private double offset;
+        private double consonant;
+        private double cutoff;
+        private double preutter;
+        private double overlap;
 
         public UOto() { }
 
         public UOto(Oto oto, UOtoSet set, USubbank subbank) {
+            this.oto = oto;
             Alias = oto.Alias;
             Phonetic = oto.Phonetic;
             Set = set.Name;
@@ -32,7 +75,11 @@ namespace OpenUtau.Core.Ustx {
             Prefix = subbank?.Prefix;
             Suffix = subbank?.Suffix;
             ToneSet = subbank?.toneSet;
-            File = Path.Combine(set.Location, oto.Wav);
+            if (!string.IsNullOrEmpty(oto.Wav)) {
+                File = Path.Combine(set.Location, oto.Wav);
+            } else {
+                File = string.Empty;
+            }
             DisplayFile = oto?.Wav;
             Offset = oto.Offset;
             Consonant = oto.Consonant;
@@ -41,6 +88,23 @@ namespace OpenUtau.Core.Ustx {
             Overlap = oto.Overlap;
 
             SearchTerms = new List<string>();
+        }
+
+        public static UOto OfDummy(string alias) => new UOto() {
+            Alias = alias,
+            Phonetic = alias,
+        };
+
+        public void WriteBack() {
+            oto.Offset = offset;
+            oto.Consonant = consonant;
+            oto.Cutoff = cutoff;
+            oto.Preutter = preutter;
+            oto.Overlap = overlap;
+        }
+
+        private void NotifyPropertyChanged(string propertyName = "") {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
         public override string ToString() => Alias;
@@ -54,7 +118,11 @@ namespace OpenUtau.Core.Ustx {
 
         public UOtoSet(OtoSet otoSet, string singersPath) {
             this.otoSet = otoSet;
-            Location = Path.Combine(singersPath, Path.GetDirectoryName(otoSet.File));
+            if (!string.IsNullOrEmpty(otoSet.File)) {
+                Location = Path.Combine(singersPath, Path.GetDirectoryName(otoSet.File));
+            } else {
+                Location = string.Empty;
+            }
         }
 
         public override string ToString() => Name;
@@ -118,11 +186,31 @@ namespace OpenUtau.Core.Ustx {
         }
     }
 
-    [Flags] public enum USingerType { Classic = 0x1, Enunu = 0x2, Vogen = 0x4 }
+    [Flags] public enum USingerType { Classic = 0x1, Enunu = 0x2, Vogen = 0x4, DiffSinger = 0x5, Voicevox = 0x6 }
 
-    public class USinger {
+    public static class SingerTypeUtils {
+        public static Dictionary<USingerType?, string> SingerTypeNames = new Dictionary<USingerType?, string>(){
+            {USingerType.Classic, "utau"},
+            {USingerType.Enunu, "enunu"},
+            {USingerType.DiffSinger, "diffsinger"},
+            {USingerType.Voicevox, "voicevox"},
+        };
+
+        public static Dictionary<string, USingerType> SingerTypeFromName = new Dictionary<string, USingerType>(){
+            {"utau", USingerType.Classic},
+            {"enunu", USingerType.Enunu},
+            {"diffsinger", USingerType.DiffSinger},
+            {"voicevox", USingerType.Voicevox},
+        };
+
+    }
+
+    public class USinger : INotifyPropertyChanged, IEquatable<USinger> {
+        protected static readonly List<UOto> emptyOtos = new List<UOto>();
+
         public virtual string Id { get; }
         public virtual string Name => name;
+        public virtual Dictionary<string, string> LocalizedNames { get; }
         public virtual USingerType SingerType { get; }
         public virtual string BasePath { get; }
         public virtual string Author { get; }
@@ -136,35 +224,92 @@ namespace OpenUtau.Core.Ustx {
         public virtual byte[] AvatarData { get; }
         public virtual string Portrait { get; }
         public virtual float PortraitOpacity { get; }
+        public virtual int PortraitHeight { get; }
+        public virtual string Sample { get; }
+        public virtual string DefaultPhonemizer { get; }
         public virtual Encoding TextFileEncoding => Encoding.UTF8;
         public virtual IList<USubbank> Subbanks { get; }
-        public virtual Dictionary<string, UOto> Otos { get; }
+        public virtual IList<UOto> Otos => emptyOtos;
 
         public bool Found => found;
         public bool Loaded => found && loaded;
+        public bool OtoDirty {
+            get => otoDirty;
+            set {
+                otoDirty = value;
+                NotifyPropertyChanged(nameof(OtoDirty));
+            }
+        }
+        public bool IsFavourite {
+            get => Preferences.Default.FavoriteSingers.Contains(Id);
+            set {
+                if (value) {
+                    if (!Preferences.Default.FavoriteSingers.Contains(Id)) {
+                        Preferences.Default.FavoriteSingers.Add(Id);
+                    }
+                } else {
+                    Preferences.Default.FavoriteSingers.Remove(Id);
+                }
+                Preferences.Save();
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
 
         protected bool found;
         protected bool loaded;
+        protected bool otoDirty;
 
         private string name;
 
-        public string DisplayName { get { return Found ? name : $"[Missing] {name}"; } }
+        public string LocalizedName {
+            get {
+                if (LocalizedNames == null) {
+                    return Found ? Name : $"[Missing] {Name}";
+                }
+                string language = Preferences.Default.SortingOrder;
+                if (language == null) {
+                    language = Preferences.Default.Language;
+                }
+                if (string.IsNullOrEmpty(language)) { // InvariantCulture
+                    return Found ? Name : $"[Missing] {Name}";
+                }
+                if (LocalizedNames.TryGetValue(language, out var localizedName)) {
+                    return Found ? localizedName : $"[Missing] {localizedName}";
+                } else {
+                    return Found ? Name : $"[Missing] {Name}";
+                }
+            }
+        }
 
         public virtual void EnsureLoaded() { }
         public virtual void Reload() { }
-        public virtual bool TryGetMappedOto(string phoneme, int tone, out UOto oto) {
+        public virtual void Save() { }
+        public virtual bool TryGetOto(string phoneme, out UOto oto) {
             oto = default;
             return false;
+        }
+        public virtual bool TryGetMappedOto(string phoneme, int tone, out UOto oto) {
+            return TryGetOto(phoneme, out oto);
         }
         public virtual bool TryGetMappedOto(string phoneme, int tone, string color, out UOto oto) {
-            oto = default;
-            return false;
+            return TryGetOto(phoneme, out oto);
         }
 
-        private static readonly List<UOto> emptyOtos = new List<UOto>();
         public virtual IEnumerable<UOto> GetSuggestions(string text) { return emptyOtos; }
         public virtual byte[] LoadPortrait() => null;
-        public override string ToString() => Name;
+        public virtual byte[] LoadSample() => null;
+        public override string ToString() => LocalizedName;
+        public bool Equals(USinger other) {
+            // Tentative: Since only the singer's Id is recorded in ustx and preferences, singers with the same Id are considered identical.
+            // Singer with the same directory name in different locations may be identical.
+            if (other != null && other.Id == this.Id) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+        public override int GetHashCode() => Id.GetHashCode();
 
         public static USinger CreateMissing(string name) {
             return new USinger() {
@@ -173,5 +318,18 @@ namespace OpenUtau.Core.Ustx {
                 name = name,
             };
         }
+
+        private void NotifyPropertyChanged(string propertyName = "") {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        /// <summary>
+        /// Some types of singers store their data in memory when rendering.
+        /// This method is called when the singer is no longer used.
+        /// Note:
+        /// - the voicebank may be used again even after this method is called.
+        /// - this method may be called even when the singer has not been used
+        /// </summary>
+        public virtual void FreeMemory() { }
     }
 }

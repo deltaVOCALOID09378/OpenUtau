@@ -3,12 +3,13 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:OpenUtau.App.ViewModels"
-        mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="470"
+        xmlns:c="using:OpenUtau.Controls"
+        mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
         x:Class="OpenUtau.App.Views.NoteDefaultsDialog"
-        Title="{DynamicResource notedefaults.caption}"
+        Icon="/Assets/open-utau.ico"
+        Title="{DynamicResource pianoroll.menu.notedefaults}"
         WindowStartupLocation="CenterScreen"
-        MinWidth="600" MinHeight="470" Width="600" Height="470"
-        ExtendClientAreaToDecorationsHint="False">
+        MinWidth="600" MinHeight="530" Width="600" Height="530">
   <Window.Resources>
     <vm:CultureNameConverter x:Key="cultureNameConverter"/>
   </Window.Resources>
@@ -20,8 +21,12 @@
           <HeaderedContentControl Classes="groupbox" Header="{DynamicResource notedefaults.lyric}">
               <StackPanel>
                   <Grid ColumnDefinitions="173,20,*">
-                      <Label Content="{DynamicResource notedefaults.lyric.defaultlyric}"/>
+                      <Label Content="{DynamicResource notedefaults.lyric.enter}"/>
                       <TextBox Grid.Column="2" Text="{Binding DefaultLyric}" />
+                  </Grid>
+                  <Grid ColumnDefinitions="173,20,*">
+                      <Label Content="{DynamicResource notedefaults.lyric.knife}"/>
+                      <TextBox Grid.Column="2" Text="{Binding SplittedLyric}" />
                   </Grid>
               </StackPanel>
           </HeaderedContentControl>
@@ -29,7 +34,7 @@
               <StackPanel>
                   <Grid ColumnDefinitions="173,20,*,20,80,20,80">
                       <Label Content="{DynamicResource notedefaults.preset}"/>
-                      <ComboBox Grid.Column="2" Items="{Binding PortamentoPresets}"
+                      <ComboBox Grid.Column="2" ItemsSource="{Binding PortamentoPresets}"
                       SelectedItem="{Binding ApplyPortamentoPreset}" HorizontalAlignment="Stretch"/>
                       <Button Grid.Column="4" Content="{DynamicResource notedefaults.preset.save}"
                       HorizontalAlignment="Stretch" Click="OnSavePortamentoPreset"
@@ -40,13 +45,13 @@
                   </Grid>
                   <Grid ColumnDefinitions="180,20,50,20,*">
                       <Label Content="{DynamicResource notedefaults.portamento.length}"/>
-                      <TextBox Grid.Column="2" Text="{Binding CurrentPortamentoLength}" />
+                      <c:IntEditor Grid.Column="2" Value="{Binding CurrentPortamentoLength}" />
                       <Slider Grid.Column="4" Classes="fader" Value="{Binding CurrentPortamentoLength}" Minimum="2" Maximum="320"
                       TickPlacement="BottomRight" TickFrequency="1" IsSnapToTickEnabled="true" />
                   </Grid>
                   <Grid ColumnDefinitions="180,20,50,20,*">
                       <Label Content="{DynamicResource notedefaults.portamento.start}"/>
-                      <TextBox Grid.Column="2" Text="{Binding CurrentPortamentoStart}" />
+                      <c:IntEditor Grid.Column="2" Value="{Binding CurrentPortamentoStart}" />
                       <Slider Grid.Column="4" Classes="fader" Value="{Binding CurrentPortamentoStart}" Minimum="-200" Maximum="200"
                       TickPlacement="BottomRight" TickFrequency="1" IsSnapToTickEnabled="true" />
                   </Grid>
@@ -56,7 +61,7 @@
               <StackPanel>
                   <Grid ColumnDefinitions="173,20,*,20,80,20,80">
                       <Label Content="{DynamicResource notedefaults.preset}"/>
-                      <ComboBox Grid.Column="2" Items="{Binding VibratoPresets}"
+                      <ComboBox Grid.Column="2" ItemsSource="{Binding VibratoPresets}"
                       SelectedItem="{Binding ApplyVibratoPreset}" HorizontalAlignment="Stretch" />
                       <Button Grid.Column="4" Content="{DynamicResource notedefaults.preset.save}"
                       HorizontalAlignment="Stretch" Click="OnSaveVibratoPreset"
@@ -67,49 +72,61 @@
                   </Grid>
                   <Grid ColumnDefinitions="180,20,50,20,*">
                       <Label Content="{DynamicResource notedefaults.vibrato.length}"/>
-                      <TextBox Grid.Column="2" Text="{Binding CurrentVibratoLength}" />
+                      <c:FloatEditor Grid.Column="2" Value="{Binding CurrentVibratoLength}" />
                       <Slider Grid.Column="4" Classes="fader" Value="{Binding CurrentVibratoLength}" Minimum="0" Maximum="100"
                       TickPlacement="BottomRight" TickFrequency="0.1" IsSnapToTickEnabled="true" />
                   </Grid>
                   <Grid ColumnDefinitions="180,20,50,20,*">
                       <Label Content="{DynamicResource notedefaults.vibrato.period}"/>
-                      <TextBox Grid.Column="2" Text="{Binding CurrentVibratoPeriod}" />
+                      <c:FloatEditor Grid.Column="2" Value="{Binding CurrentVibratoPeriod}" />
                       <Slider Grid.Column="4" Classes="fader" Value="{Binding CurrentVibratoPeriod}" Minimum="5" Maximum="500"
                       TickPlacement="BottomRight" TickFrequency="0.1" IsSnapToTickEnabled="true" />
                   </Grid>
                   <Grid ColumnDefinitions="180,20,50,20,*">
                       <Label Content="{DynamicResource notedefaults.vibrato.depth}"/>
-                      <TextBox Grid.Column="2" Text="{Binding CurrentVibratoDepth}" />
+                      <c:FloatEditor Grid.Column="2" Value="{Binding CurrentVibratoDepth}" />
                       <Slider Grid.Column="4" Classes="fader" Value="{Binding CurrentVibratoDepth}" Minimum="5" Maximum="200"
                       TickPlacement="BottomRight" TickFrequency="0.1" IsSnapToTickEnabled="true" />
                   </Grid>
                   <Grid ColumnDefinitions="*,20,*">
                       <Grid Grid.Column="0" ColumnDefinitions="70,10,40,20,*">
                           <Label Content="{DynamicResource notedefaults.vibrato.in}"/>
-                          <TextBox Grid.Column="2" Text="{Binding CurrentVibratoIn}" />
+                          <c:FloatEditor Grid.Column="2" Value="{Binding CurrentVibratoIn}" />
                           <Slider Grid.Column="4" Classes="fader" Value="{Binding CurrentVibratoIn}" Minimum="0" Maximum="100"
                           TickPlacement="BottomRight" TickFrequency="0.1" IsSnapToTickEnabled="true" />
                       </Grid>
                       <Grid Grid.Column="2" ColumnDefinitions="70,10,40,20,*">
                           <Label Content="{DynamicResource notedefaults.vibrato.out}"/>
-                          <TextBox Grid.Column="2" Text="{Binding CurrentVibratoOut}" />
+                          <c:FloatEditor Grid.Column="2" Value="{Binding CurrentVibratoOut}" />
                           <Slider Grid.Column="4" Classes="fader" Value="{Binding CurrentVibratoOut}" Minimum="0" Maximum="100"
                           TickPlacement="BottomRight" TickFrequency="0.1" IsSnapToTickEnabled="true" />
                       </Grid>
                   </Grid>
                   <Grid ColumnDefinitions="180,20,50,20,*">
-                      <Label Content="{DynamicResource notedefaults.vibrato.shift}"/>
-                      <TextBox Grid.Column="2" Text="{Binding CurrentVibratoShift}" />
-                      <Slider Grid.Column="4" Classes="fader" Value="{Binding CurrentVibratoShift}" Minimum="1" Maximum="100"
-                      TickPlacement="BottomRight" TickFrequency="0.1" IsSnapToTickEnabled="true" />
+                    <Label Content="{DynamicResource notedefaults.vibrato.shift}"/>
+                    <c:FloatEditor Grid.Column="2" Value="{Binding CurrentVibratoShift}" />
+                    <Slider Grid.Column="4" Classes="fader" Value="{Binding CurrentVibratoShift}" Minimum="0" Maximum="100"
+                    TickPlacement="BottomRight" TickFrequency="0.1" IsSnapToTickEnabled="true" />
+                  </Grid>
+                  <Grid ColumnDefinitions="180,20,50,20,*">
+                    <Label Content="{DynamicResource notedefaults.vibrato.drift}"/>
+                    <c:FloatEditor Grid.Column="2" Value="{Binding CurrentVibratoDrift}" />
+                    <Slider Grid.Column="4" Classes="fader" Value="{Binding CurrentVibratoDrift}" Minimum="-100" Maximum="100"
+                    TickPlacement="BottomRight" TickFrequency="0.1" IsSnapToTickEnabled="true" />
+                  </Grid>
+                  <Grid ColumnDefinitions="180,20,50,20,*">
+                    <Label Content="{DynamicResource notedefaults.vibrato.vollink}"/>
+                    <c:FloatEditor Grid.Column="2" Value="{Binding CurrentVibratoVolLink}" />
+                    <Slider Grid.Column="4" Classes="fader" Value="{Binding CurrentVibratoVolLink}" Minimum="-100" Maximum="100"
+                    TickPlacement="BottomRight" TickFrequency="0.1" IsSnapToTickEnabled="true" />
                   </Grid>
                   <Grid ColumnDefinitions="173,20,*">
-                      <Label Content="{DynamicResource notedefaults.vibrato.autotoggle}"/>
-                      <CheckBox Grid.Column="2" IsChecked="{Binding AutoVibratoToggle}"/>
+                    <Label Content="{DynamicResource notedefaults.vibrato.autotoggle}"/>
+                    <CheckBox Grid.Column="2" IsChecked="{Binding AutoVibratoToggle}"/>
                   </Grid>
                   <Grid ColumnDefinitions="180,20,50,20,*">
                       <Label Content="{DynamicResource notedefaults.vibrato.autominlength}"/>
-                      <TextBox Grid.Column="2" IsEnabled="{Binding AutoVibratoToggle}" Text="{Binding AutoVibratoNoteLength}" />
+                      <c:FloatEditor Grid.Column="2" IsEnabled="{Binding AutoVibratoToggle}" Value="{Binding AutoVibratoNoteLength}" />
                       <Slider Grid.Column="4" Classes="fader" IsEnabled="{Binding AutoVibratoToggle}" Value="{Binding AutoVibratoNoteLength}" Minimum="10" Maximum="1920"
                       TickPlacement="BottomRight" TickFrequency="1" IsSnapToTickEnabled="true" />
                   </Grid>

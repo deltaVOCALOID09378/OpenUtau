@@ -7,10 +7,11 @@ using Avalonia.Media;
 using OpenUtau.App.ViewModels;
 using OpenUtau.Core;
 using OpenUtau.Core.Ustx;
+using OpenUtau.Core.Util;
 using ReactiveUI;
 
 namespace OpenUtau.App.Controls {
-    class NotesCanvas : Canvas {
+    class NotesCanvas : Control {
         public static readonly DirectProperty<NotesCanvas, double> TickWidthProperty =
             AvaloniaProperty.RegisterDirect<NotesCanvas, double>(
                 nameof(TickWidth),
@@ -99,9 +100,13 @@ namespace OpenUtau.App.Controls {
         private HashSet<UNote> selectedNotes = new HashSet<UNote>();
         private Geometry pointGeometry;
 
+        private bool showGhostNotes = true;
+        private List<UPart> otherPartsInView = new List<UPart>();
+
         public NotesCanvas() {
             ClipToBounds = true;
             pointGeometry = new EllipseGeometry(new Rect(-2.5, -2.5, 5, 5));
+
             MessageBus.Current.Listen<NotesRefreshEvent>()
                 .Subscribe(_ => InvalidateVisual());
             MessageBus.Current.Listen<NotesSelectionEvent>()
@@ -111,13 +116,26 @@ namespace OpenUtau.App.Controls {
                     selectedNotes.UnionWith(e.tempSelectedNotes);
                     InvalidateVisual();
                 });
+            MessageBus.Current.Listen<PartRefreshEvent>()
+                .Subscribe(_ => RefreshGhostNotes());
+            this.WhenAnyValue(x => x.Part)
+                .Subscribe(_ => RefreshGhostNotes());
         }
 
-        protected override void OnPropertyChanged<T>(AvaloniaPropertyChangedEventArgs<T> change) {
-            base.OnPropertyChanged(change);
-            if (!change.IsEffectiveValueChange) {
+        void RefreshGhostNotes() {
+            showGhostNotes = Convert.ToBoolean(Preferences.Default.ShowGhostNotes);
+            if (Part == null || !showGhostNotes) {
                 return;
             }
+            otherPartsInView = DocManager.Inst.Project.parts
+                .Where(other => other.trackNo != Part.trackNo &&
+                    other.position < Part.End &&
+                    Part.position < other.End)
+                .ToList();
+        }
+
+        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change) {
+            base.OnPropertyChanged(change);
             InvalidateVisual();
         }
 
@@ -130,9 +148,31 @@ namespace OpenUtau.App.Controls {
             if (viewModel == null) {
                 return;
             }
+            DrawBackgroundForHitTest(context);
             double leftTick = TickOffset - 480;
             double rightTick = TickOffset + Bounds.Width / TickWidth + 480;
             bool hidePitch = viewModel.TickWidth <= ViewConstants.PianoRollTickWidthShowDetails * 0.5;
+
+            if (showGhostNotes) {
+                foreach (UPart otherPart in otherPartsInView) {
+                    if (otherPart is UVoicePart otherVoicePart) {
+                        var xOffset = otherVoicePart.position - Part.position;
+                        var brush = ThemeManager.NeutralAccentBrushSemi;
+                        if (otherVoicePart.trackNo >= 0) {
+                            var track = DocManager.Inst.Project.tracks[otherVoicePart.trackNo];
+                            brush = ThemeManager.GetTrackColor(track.TrackColor).AccentColorLightSemi;
+                        }
+
+                        foreach (var note in otherVoicePart.notes) {
+                            if (note.LeftBound + xOffset >= rightTick || note.RightBound + xOffset <= leftTick) {
+                                continue;
+                            }
+                            RenderGhostNote(note, viewModel, context, xOffset, brush);
+                        }
+                    }
+                }
+            }
+
             foreach (var note in Part.notes) {
                 if (note.LeftBound >= rightTick || note.RightBound <= leftTick) {
                     continue;
@@ -159,6 +199,10 @@ namespace OpenUtau.App.Controls {
             }
         }
 
+        private void DrawBackgroundForHitTest(DrawingContext context) {
+            context.DrawRectangle(Brushes.Transparent, null, Bounds.WithX(0).WithY(0));
+        }
+
         private void RenderNoteBody(UNote note, NotesViewModel viewModel, DrawingContext context) {
             Point leftTop = viewModel.TickToneToPoint(note.position, note.tone);
             leftTop = leftTop.WithX(leftTop.X + 1).WithY(Math.Round(leftTop.Y + 1));
@@ -173,28 +217,52 @@ namespace OpenUtau.App.Controls {
                 return;
             }
             string displayLyric = note.lyric;
-            var textLayout = TextLayoutCache.Get(displayLyric, Brushes.White, 12);
-            if (textLayout.Size.Width + 5 > size.Width) {
+            int txtsize = 12;
+            var textLayout = TextLayoutCache.Get(displayLyric, Brushes.White, txtsize);
+            if (txtsize > size.Height) {
+                return;
+            }
+            if (textLayout.Height + 5 < size.Height) {
+                txtsize = (int)(12 * (size.Height / textLayout.Height));
+                textLayout = TextLayoutCache.Get(displayLyric, Brushes.White, txtsize);
+            }
+            if (textLayout.Width + 5 > size.Width) {
                 displayLyric = displayLyric[0] + "..";
-                textLayout = TextLayoutCache.Get(displayLyric, Brushes.White, 12);
-                if (textLayout.Size.Width + 5 > size.Width) {
+                textLayout = TextLayoutCache.Get(displayLyric, Brushes.White, txtsize);
+                if (textLayout.Width + 5 > size.Width) {
                     return;
                 }
             }
             Point textPosition = leftTop.WithX(leftTop.X + 5)
-                .WithY(Math.Round(leftTop.Y + (size.Height - textLayout.Size.Height) / 2));
-            using (var state = context.PushPreTransform(Matrix.CreateTranslation(textPosition.X, textPosition.Y))) {
-                textLayout.Draw(context);
+                .WithY(Math.Round(leftTop.Y + (size.Height - textLayout.Height) / 2));
+            using (var state = context.PushTransform(Matrix.CreateTranslation(textPosition.X, textPosition.Y))) {
+                textLayout.Draw(context, new Point());
             }
+        }
+
+        private void RenderGhostNote(UNote note, NotesViewModel viewModel, DrawingContext context, int partOffset, IBrush brush) {
+            // REVIEW should ghost note be smaller?
+            double relativeSize = 0.5d;
+            double height = TrackHeight * relativeSize;
+            double yOffset = Math.Floor(height * 0.5f);
+            Point leftTop = viewModel.TickToneToPoint(partOffset + note.position, note.tone);
+            leftTop = leftTop.WithX(leftTop.X + 1).WithY(Math.Round(leftTop.Y + 1 + yOffset));
+
+            Size size = viewModel.TickToneToSize(note.duration, relativeSize);
+            size = size.WithWidth(size.Width - 1).WithHeight(Math.Floor(size.Height - 2));
+
+            Point rightBottom = new Point(leftTop.X + size.Width, leftTop.Y + size.Height);
+
+            context.DrawRectangle(brush, null, new Rect(leftTop, rightBottom), 2, 2);
         }
 
         private void RenderPitchBend(UNote note, NotesViewModel viewModel, DrawingContext context) {
             var pitchExp = note.pitch;
             var pts = pitchExp.data;
-            if (pts.Count < 2) return;
+            if (pts.Count < 2 || viewModel.Part == null) return;
 
             var project = viewModel.Project;
-            double p0Tick = note.position + project.MillisecondToTick(pts[0].X);
+            double p0Tick = project.timeAxis.MsPosToTickPos(note.PositionMs + pts[0].X) - viewModel.Part.position;
             double p0Tone = note.tone + pts[0].Y / 10.0;
             Point p0 = viewModel.TickToneToPoint(p0Tick, p0Tone - 0.5);
             points.Clear();
@@ -202,12 +270,12 @@ namespace OpenUtau.App.Controls {
 
             var brush = note.pitch.snapFirst ? ThemeManager.AccentBrush3 : null;
             var pen = ThemeManager.AccentPen3;
-            using (var state = context.PushPreTransform(Matrix.CreateTranslation(p0.X, p0.Y))) {
+            using (var state = context.PushTransform(Matrix.CreateTranslation(p0.X, p0.Y))) {
                 context.DrawGeometry(brush, pen, pointGeometry);
             }
 
             for (int i = 1; i < pts.Count; i++) {
-                double p1Tick = note.position + project.MillisecondToTick(pts[i].X);
+                double p1Tick = project.timeAxis.MsPosToTickPos(note.PositionMs + pts[i].X) - viewModel.Part.position;
                 double p1Tone = note.tone + pts[i].Y / 10.0;
                 Point p1 = viewModel.TickToneToPoint(p1Tick, p1Tone - 0.5);
 
@@ -229,7 +297,7 @@ namespace OpenUtau.App.Controls {
                     }
                 }
                 p0 = p1;
-                using (var state = context.PushPreTransform(Matrix.CreateTranslation(p0.X, p0.Y))) {
+                using (var state = context.PushTransform(Matrix.CreateTranslation(p0.X, p0.Y))) {
                     context.DrawGeometry(null, pen, pointGeometry);
                 }
             }
@@ -244,7 +312,7 @@ namespace OpenUtau.App.Controls {
             }
 
             var pen = ThemeManager.AccentPen3;
-            float nPeriod = (float)viewModel.Project.MillisecondToTick(vibrato.period) / note.duration;
+            float nPeriod = (float)viewModel.Project.timeAxis.TicksBetweenMsPos(note.PositionMs, note.PositionMs + vibrato.period) / note.duration;
             float nPos = vibrato.NormalizedStart;
             var point = vibrato.Evaluate(nPos, nPeriod, note);
             points.Clear();
@@ -264,7 +332,7 @@ namespace OpenUtau.App.Controls {
             var togglePos = vibrato.GetToggle(note);
             Point icon = viewModel.TickToneToPoint(togglePos.X, togglePos.Y);
             var pen = ThemeManager.BarNumberPen;
-            using (var state = context.PushPreTransform(Matrix.CreateTranslation(icon.X - 10, icon.Y))) {
+            using (var state = context.PushTransform(Matrix.CreateTranslation(icon.X - 10, icon.Y))) {
                 context.DrawGeometry(vibrato.length == 0 ? null : pen.Brush, pen, vibratoIcon);
             }
         }
@@ -282,16 +350,16 @@ namespace OpenUtau.App.Controls {
             context.DrawLine(pen, start, fadeIn);
             context.DrawLine(pen, fadeIn, fadeOut);
             context.DrawLine(pen, fadeOut, end);
-            using (var state = context.PushPreTransform(Matrix.CreateTranslation(start))) {
+            using (var state = context.PushTransform(Matrix.CreateTranslation(start))) {
                 context.DrawGeometry(pen.Brush, pen, pointGeometry);
             }
-            using (var state = context.PushPreTransform(Matrix.CreateTranslation(fadeIn))) {
+            using (var state = context.PushTransform(Matrix.CreateTranslation(fadeIn))) {
                 context.DrawGeometry(pen.Brush, pen, pointGeometry);
             }
-            using (var state = context.PushPreTransform(Matrix.CreateTranslation(fadeOut))) {
+            using (var state = context.PushTransform(Matrix.CreateTranslation(fadeOut))) {
                 context.DrawGeometry(pen.Brush, pen, pointGeometry);
             }
-            vibrato.GetPeriodStartEnd(note, DocManager.Inst.Project, out var periodStartPos, out var periodEndPos);
+            vibrato.GetPeriodStartEnd(DocManager.Inst.Project, note, out var periodStartPos, out var periodEndPos);
             Point periodStart = viewModel.TickToneToPoint(periodStartPos);
             Point periodEnd = viewModel.TickToneToPoint(periodEndPos);
             float height = (float)TrackHeight / 3;
@@ -306,11 +374,10 @@ namespace OpenUtau.App.Controls {
             var pen = ThemeManager.FinalPitchPen!;
             lock (Part!) {
                 foreach (var phrase in Part!.renderPhrases) {
-                    if (phrase.phones.First().position > rightTick ||
-                        phrase.phones.Last().position + phrase.phones.Last().duration < leftTick) {
+                    if (phrase.position - Part.position > rightTick || phrase.end - Part.position < leftTick) {
                         continue;
                     }
-                    int pitchStart = phrase.phones[0].position - phrase.phones[0].leading;
+                    int pitchStart = phrase.position - phrase.leading - Part.position;
                     int startIdx = (int)Math.Max(0, (leftTick - pitchStart) / 5);
                     int endIdx = (int)Math.Min(phrase.pitches.Length, (rightTick - pitchStart) / 5 + 1);
                     points.Clear();

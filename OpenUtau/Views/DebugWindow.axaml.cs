@@ -1,7 +1,5 @@
 ﻿using System;
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Markup.Xaml;
 using OpenUtau.App.ViewModels;
 
 namespace OpenUtau.App.Views {
@@ -9,16 +7,16 @@ namespace OpenUtau.App.Views {
         DebugViewModel viewModel;
 
         public DebugWindow() {
-            DataContext = viewModel = new DebugViewModel();
             InitializeComponent();
-#if DEBUG
-            this.AttachDevTools();
-#endif
-        }
-
-        private void InitializeComponent() {
-            AvaloniaXamlLoader.Load(this);
+            DataContext = viewModel = new DebugViewModel();
+            viewModel.SetWindow(this);
             viewModel.Attach();
+        }
+        public void CopyLogText() {
+            CopyTextBox.Text = DebugViewModel.Sink.Inst.ToString();
+            CopyTextBox.SelectAll();
+            CopyTextBox.Copy();
+            CopyTextBox.Clear();
         }
 
         void OnClosed(object? sender, EventArgs e) {

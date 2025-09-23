@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using NAudio.Wave;
@@ -7,7 +8,32 @@ using OpenUtau.Core.Format;
 using Serilog;
 
 namespace OpenUtau.Core.Render {
-    static class Worldline {
+    public class SynthRequestError : Exception { }
+
+    public class CutOffExceedDurationError : SynthRequestError { }
+
+    public class CutOffBeforeOffsetError : SynthRequestError { }
+
+    public static class Worldline {
+        [DllImport("worldline", CallingConvention = CallingConvention.Cdecl)]
+        static extern int F0(
+            float[] samples, int length, int fs, double framePeriod, int method, ref IntPtr f0);
+
+        public static double[] F0(float[] samples, int fs, double framePeriod, int method) {
+            try {
+                unsafe {
+                    IntPtr buffer = IntPtr.Zero;
+                    int size = F0(samples, samples.Length, fs, framePeriod, method, ref buffer);
+                    var data = new double[size];
+                    Marshal.Copy(buffer, data, 0, size);
+                    return data;
+                }
+            } catch (Exception e) {
+                Log.Error(e, "Failed to calculate f0.");
+                return null;
+            }
+        }
+
         [DllImport("worldline", CallingConvention = CallingConvention.Cdecl)]
         static extern int DecodeMgc(
             int f0Length, double[] mgc, int mgcSize,
@@ -122,6 +148,8 @@ namespace OpenUtau.Core.Render {
             public int sample_fs;
             public int sample_length;
             public IntPtr sample;
+            public int frq_length;
+            public IntPtr frq;
             public int tone;
             public double con_vel;
             public double offset;
@@ -154,21 +182,37 @@ namespace OpenUtau.Core.Render {
                     sample = Wave.GetSamples(waveStream.ToSampleProvider().ToMono(1, 0))
                         .Select(f => (double)f).ToArray();
                 }
+                string frqFile = VoicebankFiles.GetFrqFile(item.inputFile);
+                GCHandle? pinnedFrq = null;
+                byte[] frq = null;
+                if (File.Exists(frqFile)) {
+                    using (var frqStream = File.OpenRead(frqFile)) {
+                        using (var memStream = new MemoryStream()) {
+                            frqStream.CopyTo(memStream);
+                            frq = memStream.ToArray();
+                            pinnedFrq = GCHandle.Alloc(frq, GCHandleType.Pinned);
+                        }
+                    }
+                }
 
                 var pinnedSample = GCHandle.Alloc(sample, GCHandleType.Pinned);
                 var pinnedPitchBend = GCHandle.Alloc(item.pitches, GCHandleType.Pinned);
-                handles = new[] { pinnedSample, pinnedPitchBend };
+                handles = pinnedFrq == null
+                    ? new[] { pinnedSample, pinnedPitchBend }
+                    : new[] { pinnedSample, pinnedPitchBend, pinnedFrq.Value };
                 request = new SynthRequest {
                     sample_fs = fs,
                     sample_length = sample.Length,
                     sample = pinnedSample.AddrOfPinnedObject(),
+                    frq_length = frq?.Length ?? 0,
+                    frq = pinnedFrq?.AddrOfPinnedObject() ?? IntPtr.Zero,
                     tone = item.tone,
                     con_vel = item.velocity,
                     offset = item.offset,
-                    required_length = item.requiredLength,
+                    required_length = item.durRequired,
                     consonant = item.consonant,
                     cut_off = item.cutoff,
-                    volume = item.volume,
+                    volume = item.phone.direct ? 0 : item.volume,
                     modulation = item.modulation,
                     tempo = item.tempo,
                     pitch_bend_length = item.pitches.Length,
@@ -203,6 +247,23 @@ namespace OpenUtau.Core.Render {
                 flag = item.flags.FirstOrDefault(f => f.Item1 == "Mv");
                 if (flag != null && flag.Item2.HasValue) {
                     request.flag_Mv = flag.Item2.Value;
+                }
+                Validate(request);
+            }
+            static void Validate(SynthRequest request) {
+                int frame_ms = 10;
+                var total_ms = 1000.0 * request.sample_length / request.sample_fs;
+                var in_start_ms = request.offset;
+                var in_length_ms = request.cut_off < 0
+                    ? -request.cut_off
+                    : total_ms - request.offset - request.cut_off;
+                int in_start_frame = (int)(in_start_ms / frame_ms);
+                int in_length_frame = (int)(Math.Ceiling(in_start_ms + in_length_ms) / frame_ms) - in_start_frame;
+                if ((in_start_frame + in_length_frame) * frame_ms * request.sample_fs > request.sample_length * 1000.0) {
+                    throw new CutOffExceedDurationError();
+                }
+                if (in_length_frame <= 0) {
+                    throw new CutOffBeforeOffsetError();
                 }
             }
 

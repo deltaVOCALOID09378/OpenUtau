@@ -14,7 +14,6 @@ using OpenUtau.Core.SignalChain;
 using OpenUtau.Core.Ustx;
 using Serilog;
 using VocalShaper;
-using VocalShaper.World;
 
 namespace OpenUtau.Core.Vogen {
     public class VogenRenderer : IRenderer {
@@ -47,16 +46,14 @@ namespace OpenUtau.Core.Vogen {
         }
 
         public RenderResult Layout(RenderPhrase phrase) {
-            var firstPhone = phrase.phones.First();
-            var lastPhone = phrase.phones.Last();
             return new RenderResult() {
                 leadingMs = headMs,
-                positionMs = (phrase.position + firstPhone.position) * phrase.tickToMs,
-                estimatedLengthMs = headMs + (lastPhone.duration + lastPhone.position - firstPhone.position) * phrase.tickToMs + tailMs,
+                positionMs = phrase.positionMs,
+                estimatedLengthMs = headMs + phrase.durationMs + tailMs,
             };
         }
 
-        public Task<RenderResult> Render(RenderPhrase phrase, Progress progress, CancellationTokenSource cancellation, bool isPreRender = false) {
+        public Task<RenderResult> Render(RenderPhrase phrase, Progress progress, int trackNo, CancellationTokenSource cancellation, bool isPreRender = false) {
             var task = Task.Run(() => {
                 lock (lockObj) {
                     if (cancellation.IsCancellationRequested) {
@@ -64,7 +61,8 @@ namespace OpenUtau.Core.Vogen {
                     }
                     var result = Layout(phrase);
                     var wavPath = Path.Join(PathManager.Inst.CachePath, $"vog-{phrase.hash:x16}.wav");
-                    string progressInfo = string.Join(" ", phrase.phones.Select(p => p.phoneme));
+                    phrase.AddCacheFile(wavPath);
+                    string progressInfo = $"Track {trackNo + 1}: {this} \"{string.Join(" ", phrase.phones.Select(p => p.phoneme))}\"";
                     progress.Complete(0, progressInfo);
                     if (File.Exists(wavPath)) {
                         try {
@@ -82,7 +80,7 @@ namespace OpenUtau.Core.Vogen {
                         WaveFileWriter.CreateWaveFile16(wavPath, new ExportAdapter(source).ToMono(1, 0));
                     }
                     if (result.samples != null) {
-                        ApplyDynamics(phrase, result.samples);
+                        Renderers.ApplyDynamics(phrase, result);
                     }
                     progress.Complete(phrase.phones.Length, progressInfo);
                     return result;
@@ -103,7 +101,7 @@ namespace OpenUtau.Core.Vogen {
                 .Append(0)
                 .ToList();
             var noteDurs = phrase.notes
-                .Select(n => (long)Math.Round(n.duration * phrase.tickToMs / frameMs))
+                .Select(n => (long)Math.Round(n.durationMs / frameMs))
                 .Prepend(headFrames)
                 .Append(tailFrames)
                 .ToList();
@@ -115,22 +113,19 @@ namespace OpenUtau.Core.Vogen {
                 .Prepend("")
                 .Append("")
                 .ToList();
-            var phDurs = new List<long>();
-            phDurs.Add(headFrames);
-            int startTick = phrase.phones.First().position;
-            double lastEndMs = 0;
-            foreach (var phone in phrase.phones) {
-                double endMs = (phone.position + phone.duration - startTick) * phrase.tickToMs;
-                phDurs.Add((int)Math.Round((endMs - lastEndMs) / frameMs));
-                lastEndMs = endMs;
-            }
-            phDurs.Add(tailFrames);
+            var phDurs = phrase.phones
+                .Select(p => (long)Math.Round(p.durationMs / frameMs))
+                .Prepend(headFrames)
+                .Append(tailFrames)
+                .ToList();
             var totalFrames = (int)phDurs.Sum();
-            var f0 = DownSampleCurve(phrase.pitches, 0, totalFrames, headFrames, tailFrames, phrase.tickToMs, x => MusicMath.ToneToFreq(x * 0.01));
+            var f0 = SampleCurve(phrase, phrase.pitches, 0, totalFrames, headFrames, tailFrames, x => MusicMath.ToneToFreq(x * 0.01));
             float[] f0Shifted = f0.Select(f => (float)f).ToArray();
             if (phrase.toneShift != null) {
                 for (int i = 0; i < f0.Length - headFrames - tailFrames; i++) {
-                    int index = (int)(i * frameMs / phrase.tickToMs / pitchInterval);
+                    double posMs = phrase.positionMs - phrase.leadingMs + i * frameMs;
+                    int ticks = phrase.timeAxis.MsPosToTickPos(posMs) - (phrase.position - phrase.leading);
+                    int index = Math.Max(0, (int)((double)ticks / pitchInterval));
                     if (index < phrase.pitches.Length) {
                         f0Shifted[i + headFrames] = (float)MusicMath.ToneToFreq((phrase.pitches[index] + phrase.toneShift[index]) * 0.01);
                     }
@@ -150,7 +145,7 @@ namespace OpenUtau.Core.Vogen {
                 new DenseTensor<string>(phonemes.ToArray(), new int[] { phonemes.Count })));
             inputs.Add(NamedOnnxValue.CreateFromTensor("phDurs",
                 new DenseTensor<long>(phDurs.ToArray(), new int[] { phonemes.Count })));
-            using (var session = new InferenceSession(Data.VogenRes.f0_man)) {
+            using (var session = Onnx.getInferenceSession(Data.VogenRes.f0_man, force_cpu:true)) {
                 using var outputs = session.Run(inputs);
                 var f0Out = outputs.First().AsTensor<float>();
                 var f0Path = Path.Join(PathManager.Inst.CachePath, $"vog-{phrase.hash:x16}-f0.npy");
@@ -174,26 +169,27 @@ namespace OpenUtau.Core.Vogen {
                 new DenseTensor<float>(breAmp, new int[] { 1, f0.Length })));
             double[,] sp;
             double[,] ap;
-            using (var session = new InferenceSession(singer.model)) {
+            using (var session = Onnx.getInferenceSession(singer.model, force_cpu:true)) {
                 using var outputs = session.Run(inputs);
                 var mgc = outputs.First().AsTensor<float>().Select(f => (double)f).ToArray();
                 var bap = outputs.Last().AsTensor<float>().Select(f => (double)f).ToArray();
                 sp = Worldline.DecodeMgc(f0.Length, mgc, fftSize, fs);
                 ap = Worldline.DecodeBap(f0.Length, bap, fftSize, fs);
             }
-            var gender = DownSampleCurve(phrase.gender, 0.5, totalFrames, headFrames, tailFrames, phrase.tickToMs, x => 0.5 + 0.005 * x);
-            var tension = DownSampleCurve(phrase.tension, 0.5, totalFrames, headFrames, tailFrames, phrase.tickToMs, x => 0.5 + 0.005 * x);
-            var breathiness = DownSampleCurve(phrase.breathiness, 0.5, totalFrames, headFrames, tailFrames, phrase.tickToMs, x => 0.5 + 0.005 * x);
-            var voicing = DownSampleCurve(phrase.voicing, 1.0, totalFrames, headFrames, tailFrames, phrase.tickToMs, x => 0.01 * x);
-            var samples = new double[1 + (int)((f0.Length - 1) * frameMs / 1000.0 * fs)];
-            World.Synthesis(
-                vocoder, out samples,
-                sp, ap, fs, fftSize, f0,
-                tension, breathiness, voicing, gender);
+            var gender = SampleCurve(phrase, phrase.gender, 0.5, totalFrames, headFrames, tailFrames, x => 0.5 + 0.005 * x);
+            var tension = SampleCurve(phrase, phrase.tension, 0.5, totalFrames, headFrames, tailFrames, x => 0.5 + 0.005 * x);
+            var breathiness = SampleCurve(phrase, phrase.breathiness, 0.5, totalFrames, headFrames, tailFrames, x => 0.5 + 0.005 * x);
+            var voicing = SampleCurve(phrase, phrase.voicing, 1.0, totalFrames, headFrames, tailFrames, x => 0.01 * x);
+            var samples = Worldline.WorldSynthesis(
+                f0,
+                sp, false, sp.GetLength(1),
+                ap, false, fftSize,
+                frameMs, 44100,
+                gender, tension, breathiness, voicing);
             return samples.Select(f => (float)f).ToArray();
         }
 
-        double[] DownSampleCurve(float[] curve, double defaultValue, int length, int headFrames, int tailFrames, double tickToMs, Func<double, double> convert) {
+        double[] SampleCurve(RenderPhrase phrase, float[] curve, double defaultValue, int length, int headFrames, int tailFrames, Func<double, double> convert) {
             const int interval = 5;
             var result = new double[length];
             if (curve == null) {
@@ -201,7 +197,9 @@ namespace OpenUtau.Core.Vogen {
                 return result;
             }
             for (int i = 0; i < length - headFrames - tailFrames; i++) {
-                int index = (int)(i * frameMs / tickToMs / interval);
+                double posMs = phrase.positionMs - phrase.leadingMs + i * frameMs;
+                int ticks = phrase.timeAxis.MsPosToTickPos(posMs) - (phrase.position - phrase.leading);
+                int index = Math.Max(0, (int)((double)ticks / interval));
                 if (index < curve.Length) {
                     result[i + headFrames] = convert(curve[index]);
                 }
@@ -209,24 +207,6 @@ namespace OpenUtau.Core.Vogen {
             Array.Fill(result, defaultValue, 0, headFrames);
             Array.Fill(result, defaultValue, length - tailFrames, tailFrames);
             return result;
-        }
-
-        void ApplyDynamics(RenderPhrase phrase, float[] samples) {
-            const int interval = 5;
-            if (phrase.dynamics == null) {
-                return;
-            }
-            int pos = 0;
-            int offset = (int)(headMs / 1000 * 44100);
-            for (int i = 0; i < phrase.dynamics.Length; ++i) {
-                int endPos = (int)((i + 1) * interval * phrase.tickToMs / 1000 * 44100);
-                float a = phrase.dynamics[i];
-                float b = (i + 1) == phrase.dynamics.Length ? phrase.dynamics[i] : phrase.dynamics[i + 1];
-                for (int j = pos; j < endPos; ++j) {
-                    samples[offset + j] *= a + (b - a) * (j - pos) / (endPos - pos);
-                }
-                pos = endPos;
-            }
         }
 
         public RenderPitchResult LoadRenderedPitch(RenderPhrase phrase) {
@@ -242,11 +222,15 @@ namespace OpenUtau.Core.Vogen {
             var t = layout.positionMs - layout.leadingMs;
             for (int i = 0; i < result.tones.Length; i++) {
                 t += frameMs;
-                result.ticks[i] = (float)(t / phrase.tickToMs) - phrase.position;
+                result.ticks[i] = phrase.timeAxis.MsPosToTickPos(t) - phrase.position;
             }
             return result;
         }
 
-        public override string ToString() => "VOGEN";
+        public UExpressionDescriptor[] GetSuggestedExpressions(USinger singer, URenderSettings renderSettings) {
+            return new UExpressionDescriptor[] { };
+        }
+
+        public override string ToString() => Renderers.VOGEN;
     }
 }

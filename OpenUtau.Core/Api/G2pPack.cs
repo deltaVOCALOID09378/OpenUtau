@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using SharpCompress.Archives;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using OpenUtau.Core.Util;
@@ -62,6 +60,10 @@ namespace OpenUtau.Api {
             return Dict.IsVowel(symbol);
         }
 
+        public bool IsGlide(string symbol) {
+            return Dict.IsGlide(symbol);
+        }
+
         public string[] Query(string grapheme) {
             if (grapheme.Length == 0 || kAllPunct.IsMatch(grapheme)) {
                 return null;
@@ -81,7 +83,7 @@ namespace OpenUtau.Api {
             return Dict.UnpackHint(hint, separator);
         }
 
-        protected string[] Predict(string grapheme) {
+        protected virtual string[] Predict(string grapheme) {
             Tensor<int> src = EncodeWord(grapheme);
             if (src.Length == 0 || Session == null) {
                 return new string[0];

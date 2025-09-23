@@ -1,12 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using YamlDotNet.Serialization;
-using Serilog;
-using OpenUtau.Core.Render;
+using NWaves.Operations;
+using NWaves.Signals;
 using OpenUtau.Api;
+using OpenUtau.Core.Render;
+using OpenUtau.Core.SignalChain;
+using Serilog;
+using SharpCompress;
+using YamlDotNet.Serialization;
 
 namespace OpenUtau.Core.Ustx {
     public abstract class UPart {
@@ -17,11 +22,12 @@ namespace OpenUtau.Core.Ustx {
 
         [YamlIgnore] public virtual string DisplayName { get; }
         [YamlIgnore] public virtual int Duration { set; get; }
-        [YamlIgnore] public int EndTick { get { return position + Duration; } }
+        [YamlIgnore] public int End { get { return position + Duration; } }
 
         public UPart() { }
 
         public abstract int GetMinDurTick(UProject project);
+        public abstract int GetMaxPosiTick(UProject project);
 
         public virtual void BeforeSave(UProject project, UTrack track) { }
         public virtual void AfterLoad(UProject project, UTrack track) { }
@@ -32,6 +38,8 @@ namespace OpenUtau.Core.Ustx {
     }
 
     public class UVoicePart : UPart {
+        public int duration;
+
         [YamlMember(Order = 100)]
         public SortedSet<UNote> notes = new SortedSet<UNote>();
         [YamlMember(Order = 101)]
@@ -45,19 +53,24 @@ namespace OpenUtau.Core.Ustx {
         [YamlIgnore] private long notesTimestamp;
         [YamlIgnore] private long phonemesTimestamp;
 
+        [YamlIgnore] private ISignalSource mix;
+
         [YamlIgnore] public bool PhonemesUpToDate => notesTimestamp == phonemesTimestamp;
+        [YamlIgnore] public ISignalSource Mix => mix;
 
         public override string DisplayName => name;
+        public override int Duration { get => duration; set => duration = value; }
 
         public override int GetMinDurTick(UProject project) {
-            return notes.Count > 0
-                ? Math.Max(project.BarTicks, notes.Last().End)
-                : project.BarTicks;
+            int endTicks = position + (notes.LastOrDefault()?.End ?? 1);
+            project.timeAxis.TickPosToBarBeat(endTicks, out int bar, out int beat, out int remainingTicks);
+            return project.timeAxis.BarBeatToTickPos(bar, beat + 1) - position;
         }
-
-        public int GetBarDurTick(UProject project) {
-            int barTicks = project.BarTicks;
-            return (int)Math.Ceiling((double)GetMinDurTick(project) / barTicks) * barTicks;
+        
+        public override int GetMaxPosiTick(UProject project) {
+            int maxStartTick = position + (notes.FirstOrDefault()?.position ?? Duration);
+            project.timeAxis.TickPosToBarBeat(maxStartTick, out int bar, out int beat, out int remainingTicks);
+            return project.timeAxis.BarBeatToTickPos(bar, beat - 1);
         }
 
         public override void BeforeSave(UProject project, UTrack track) {
@@ -70,7 +83,7 @@ namespace OpenUtau.Core.Ustx {
             foreach (var note in notes) {
                 note.AfterLoad(project, track, this);
             }
-            Duration = GetBarDurTick(project);
+            Duration = Math.Max(Duration, GetMinDurTick(project));
             foreach (var curve in curves) {
                 if (project.expressions.TryGetValue(curve.abbr, out var descriptor)) {
                     curve.descriptor = descriptor;
@@ -115,38 +128,68 @@ namespace OpenUtau.Core.Ustx {
                         group.Add(next);
                         next = next.Next;
                     }
-                    groups.Add(group.Select(e => e.ToPhonemizerNote(track)).ToArray());
+                    groups.Add(group.Select(e => e.ToPhonemizerNote(track, this)).ToArray());
                     noteIndexes.Add(noteIndex);
                     noteIndex++;
                 }
                 var request = new PhonemizerRequest() {
+                    singer = track.Singer,
                     part = this,
                     timestamp = DateTime.Now.ToFileTimeUtc(),
                     noteIndexes = noteIndexes.ToArray(),
                     notes = groups.ToArray(),
                     phonemizer = track.Phonemizer,
-                    bpm = project.bpm,
-                    beatUnit = project.beatUnit,
-                    resolution = project.resolution,
+                    timeAxis = project.timeAxis.Clone(),
                 };
                 notesTimestamp = request.timestamp;
-                DocManager.Inst.PhonemizerRunner.Push(request);
+                DocManager.Inst.PhonemizerRunner?.Push(request);
             }
             lock (this) {
                 if (phonemizerResponse != null) {
                     var resp = phonemizerResponse;
-                    phonemes.Clear();
-                    for (int i = 0; i < resp.phonemes.Length; ++i) {
-                        for (int j = 0; j < resp.phonemes[i].Length; ++j) {
-                            phonemes.Add(new UPhoneme() {
-                                rawPosition = resp.phonemes[i][j].position,
-                                rawPhoneme = resp.phonemes[i][j].phoneme,
-                                index = j,
-                                Parent = notes.ElementAtOrDefault(resp.noteIndexes[i]),
-                            });
+                    if (resp.timestamp == notesTimestamp) {
+                        phonemes.Clear();
+                        notes.ForEach(note => note.phonemizerExpressions.Clear());
+
+                        for (int i = 0; i < resp.phonemes.Length; ++i) {
+                            var indexes = new List<int>();
+                            var note = notes.ElementAtOrDefault(resp.noteIndexes[i]);
+                            for (int j = 0; j < resp.phonemes[i].Length; ++j) {
+                                var phoneme = new UPhoneme() {
+                                    rawPosition = resp.phonemes[i][j].position - position,
+                                    rawPhoneme = resp.phonemes[i][j].phoneme,
+                                    index = resp.phonemes[i][j].index ?? j,
+                                    Parent = note
+                                };
+                                // Check for duplicate indexes
+                                if (phonemes.Any(p => p.Parent == phoneme.Parent && p.index == phoneme.index)) {
+                                    try {
+                                        throw new ArgumentException("Duplicate phoneme index.");
+                                    } catch (Exception e) {
+                                        DocManager.Inst.ExecuteCmd(new ErrorMessageNotification(e));
+                                        continue;
+                                    }
+                                }
+                                phonemes.Add(phoneme);
+                                indexes.Add(phoneme.index);
+                                if (resp.phonemes[i][j].expressions != null && resp.phonemes[i][j].expressions.Any()) {
+                                    resp.phonemes[i][j].expressions.ForEach(exp => {
+                                        if (track.TryGetExpDescriptor(project, exp.abbr, out var descriptor)) {
+                                            if (descriptor.type != UExpressionType.Curve && descriptor.min <= exp.value && exp.value <= descriptor.max) {
+                                                note.phonemizerExpressions.Add(new UExpression(descriptor) {
+                                                    index = phoneme.index,
+                                                    value = exp.value
+                                                });
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                            indexes.Sort();
+                            note.phonemeIndexes = indexes.ToArray();
                         }
+                        phonemesTimestamp = resp.timestamp;
                     }
-                    phonemesTimestamp = resp.timestamp;
                     phonemizerResponse = null;
                 }
             }
@@ -179,7 +222,7 @@ namespace OpenUtau.Core.Ustx {
                     var o = note.phonemeOverrides.FirstOrDefault(o => o.index == phoneme.index);
                     if (o != null) {
                         phoneme.position += o.offset ?? 0;
-                        phoneme.phoneme = o.phoneme ?? phoneme.rawPhoneme;
+                        phoneme.phoneme = !string.IsNullOrWhiteSpace(o.phoneme) ? o.phoneme : phoneme.rawPhoneme;
                         phoneme.preutterDelta = o.preutterDelta;
                         phoneme.overlapDelta = o.overlapDelta;
                     }
@@ -205,6 +248,23 @@ namespace OpenUtau.Core.Ustx {
         internal void SetPhonemizerResponse(PhonemizerResponse response) {
             lock (this) {
                 phonemizerResponse = response;
+            }
+        }
+
+        internal RenderPartRequest GetRenderRequest() {
+            lock (this) {
+                return new RenderPartRequest() {
+                    part = this,
+                    timestamp = notesTimestamp,
+                    trackNo = trackNo,
+                    phrases = renderPhrases.ToArray(),
+                };
+            }
+        }
+
+        internal void SetMix(ISignalSource mix) {
+            lock (this) {
+                this.mix = mix;
             }
         }
 
@@ -236,41 +296,52 @@ namespace OpenUtau.Core.Ustx {
         [YamlMember(Order = 100)] public string relativePath;
         [YamlMember(Order = 101)] public double fileDurationMs;
         [YamlMember(Order = 102)] public double skipMs;
-        [YamlMember(Order = 103)] public double TrimMs;
+        [YamlMember(Order = 103)] public double trimMs;
 
         [YamlIgnore]
         public override string DisplayName => Missing ? $"[Missing] {name}" : name;
         [YamlIgnore]
         public override int Duration {
-            get => fileDurTick;
+            get => duration;
             set { }
         }
         [YamlIgnore] bool Missing { get; set; }
-        [YamlIgnore] public float[] Peaks { get; set; }
         [YamlIgnore] public float[] Samples { get; private set; }
+        [YamlIgnore] public Task<DiscreteSignal[]> Peaks { get; set; }
 
         [YamlIgnore] public int channels;
-        [YamlIgnore] public int fileDurTick;
+        [YamlIgnore] public int sampleRate;
+        [YamlIgnore] public int peaksSampleRate;
 
-        private TimeSpan duration;
+        private int duration;
 
-        public override int GetMinDurTick(UProject project) { return project.MillisecondToTick(duration.TotalMilliseconds); }
+        public override int GetMinDurTick(UProject project) {
+            double posMs = project.timeAxis.TickPosToMsPos(position);
+            int end = project.timeAxis.MsPosToTickPos(posMs + fileDurationMs);
+            return end - position;
+        }
+
+        public override int GetMaxPosiTick(UProject project) {
+            // TODO
+            return position;
+        }
 
         public override UPart Clone() {
-            return new UWavePart() {
+            var part = new UWavePart() {
                 _filePath = _filePath,
-                Peaks = Peaks,
-                channels = channels,
-                fileDurTick = fileDurTick,
+                relativePath = relativePath,
+                skipMs = skipMs,
+                trimMs = trimMs,
             };
+            part.Load(DocManager.Inst.Project);
+            return part;
         }
 
         private readonly object loadLockObj = new object();
         public void Load(UProject project) {
             try {
                 using (var waveStream = Format.Wave.OpenFile(FilePath)) {
-                    duration = waveStream.TotalTime;
-                    fileDurationMs = duration.TotalMilliseconds;
+                    fileDurationMs = waveStream.TotalTime.TotalMilliseconds;
                     channels = waveStream.WaveFormat.Channels;
                 }
             } catch (Exception e) {
@@ -279,35 +350,62 @@ namespace OpenUtau.Core.Ustx {
                 if (fileDurationMs == 0) {
                     fileDurationMs = 10000;
                 }
-                duration = TimeSpan.FromMilliseconds(fileDurationMs);
             }
-            fileDurTick = project.MillisecondToTick(fileDurationMs);
             lock (loadLockObj) {
                 if (Samples != null || Missing) {
+                    Peaks = Task.FromResult<DiscreteSignal[]>(null);
                     return;
                 }
             }
-            Task.Run(() => {
+            UpdateDuration(project);
+            Peaks = Task.Run(() => {
+                var stopwatch = Stopwatch.StartNew();
                 using (var waveStream = Format.Wave.OpenFile(FilePath)) {
                     var samples = Format.Wave.GetStereoSamples(waveStream);
                     lock (loadLockObj) {
+                        sampleRate = 44100; // GetStereoSamples resamples waveStream.
                         Samples = samples;
                     }
                 }
+                stopwatch.Stop();
+                Log.Information($"Loaded {FilePath} {stopwatch.Elapsed}");
+
+                stopwatch.Restart();
+                float[][] channelSamples = new float[channels][];
+                int length = Samples.Length / channels;
+                for (int i = 0; i < channels; ++i) {
+                    channelSamples[i] = new float[length];
+                }
+                int pos = 0;
+                for (int i = 0; i < length; ++i) {
+                    for (int j = 0; j < channels; ++j) {
+                        channelSamples[j][i] = Samples[pos++];
+                    }
+                }
+                DiscreteSignal[] peaks = new DiscreteSignal[channels];
+                var resampler = new Resampler();
+                for (int i = 0; i < channels; ++i) {
+                    peaks[i] = new DiscreteSignal(sampleRate, channelSamples[i], false);
+                    peaks[i] = resampler.Decimate(peaks[i], 10);
+                    for (int j = 0; j < peaks[i].Samples.Length; ++j) {
+                        peaks[i].Samples[j] = Math.Clamp(peaks[i].Samples[j], -1, 1);
+                    }
+                }
+                peaksSampleRate = sampleRate / 10;
+                stopwatch.Stop();
+                Log.Information($"Built peaks {FilePath} {stopwatch.Elapsed}");
+                return peaks;
             });
         }
 
-        public void BuildPeaks(IProgress<int> progress) {
-            using (var waveStream = Format.Wave.OpenFile(FilePath)) {
-                var peaks = Format.Wave.BuildPeaks(waveStream, progress);
-                lock (loadLockObj) {
-                    Peaks = peaks;
-                }
-            }
+        public override void Validate(ValidateOptions options, UProject project, UTrack track) {
+            UpdateDuration(project);
         }
 
-        public override void Validate(ValidateOptions options, UProject project, UTrack track) {
-            fileDurTick = project.MillisecondToTick(duration.TotalMilliseconds);
+        private void UpdateDuration(UProject project) {
+            double posMs = project.timeAxis.TickPosToMsPos(position);
+            int end = project.timeAxis.MsPosToTickPos(posMs + fileDurationMs);
+            duration = end - position;
         }
 
         public override void BeforeSave(UProject project, UTrack track) {
@@ -315,7 +413,13 @@ namespace OpenUtau.Core.Ustx {
         }
 
         public override void AfterLoad(UProject project, UTrack track) {
-            FilePath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(project.FilePath), relativePath ?? ""));
+            try {
+                FilePath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(project.FilePath), relativePath ?? ""));
+            } catch {
+                if (string.IsNullOrWhiteSpace(FilePath)) {
+                    throw;
+                }
+            }
             Load(project);
         }
     }

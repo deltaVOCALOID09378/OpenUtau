@@ -10,31 +10,29 @@ using OpenUtau.Api;
 using OpenUtau.Classic;
 using OpenUtau.Core.Lib;
 using OpenUtau.Core.Ustx;
+using OpenUtau.Core.Util;
 using Serilog;
 
 namespace OpenUtau.Core {
     public struct ValidateOptions {
+        public bool SkipTiming;
         public UPart Part;
         public bool SkipPhonemizer;
         public bool SkipPhoneme;
     }
 
-    public class DocManager {
+    public class DocManager : SingletonBase<DocManager> {
         DocManager() {
             Project = new UProject();
         }
-
-        static DocManager _s;
-        static DocManager GetInst() { if (_s == null) { _s = new DocManager(); } return _s; }
-        public static DocManager Inst { get { return GetInst(); } }
 
         private Thread mainThread;
         private TaskScheduler mainScheduler;
 
         public int playPosTick = 0;
 
-        public Dictionary<string, USinger> Singers { get; private set; } = new Dictionary<string, USinger>();
-        public Dictionary<USingerType, List<USinger>> SingerGroups { get; private set; } = new Dictionary<USingerType, List<USinger>>();
+        public TaskScheduler MainScheduler => mainScheduler;
+        public Action<Action> PostOnUIThread { get; set; }
         public Plugin[] Plugins { get; private set; }
         public PhonemizerFactory[] PhonemizerFactories { get; private set; }
         public UProject Project { get; private set; }
@@ -43,45 +41,15 @@ namespace OpenUtau.Core {
         public List<UNote> NotesClipboard { get; set; }
         internal PhonemizerRunner PhonemizerRunner { get; private set; }
 
-        public void Initialize() {
+        public void Initialize(Thread mainThread, TaskScheduler mainScheduler) {
             AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler((sender, args) => {
                 CrashSave();
             });
-            SearchAllSingers();
             SearchAllPlugins();
             SearchAllLegacyPlugins();
-            mainThread = Thread.CurrentThread;
-            mainScheduler = TaskScheduler.FromCurrentSynchronizationContext();
+            this.mainThread = mainThread;
+            this.mainScheduler = mainScheduler;
             PhonemizerRunner = new PhonemizerRunner(mainScheduler);
-        }
-
-        public void SearchAllSingers() {
-            try {
-                Directory.CreateDirectory(PathManager.Inst.SingersPath);
-                var stopWatch = Stopwatch.StartNew();
-                var singers = ClassicSingerLoader.FindAllSingers()
-                    .Concat(Vogen.VogenSingerLoader.FindAllSingers());
-                Singers = singers
-                    .ToLookup(s => s.Id)
-                    .ToDictionary(g => g.Key, g => g.First());
-                SingerGroups = singers
-                    .GroupBy(s => s.SingerType)
-                    .ToDictionary(s => s.Key, s => s.OrderBy(singer => singer.Name).ToList());
-                stopWatch.Stop();
-                Log.Information($"Search all singers: {stopWatch.Elapsed}");
-            } catch (Exception e) {
-                Log.Error(e, "Failed to search singers.");
-                Singers = new Dictionary<string, USinger>();
-            }
-        }
-
-        public USinger GetSinger(string name) {
-            Log.Information(name);
-            name = name.Replace("%VOICE%", "");
-            if (Singers.ContainsKey(name)) {
-                return Singers[name];
-            }
-            return null;
         }
 
         public void SearchAllLegacyPlugins() {
@@ -102,7 +70,7 @@ namespace OpenUtau.Core {
             var phonemizerFactories = new List<PhonemizerFactory>();
             var files = new List<string>();
             try {
-                files.Add(Path.Combine(Path.GetDirectoryName(GetType().Assembly.Location), kBuiltin));
+                files.Add(Path.Combine(Path.GetDirectoryName(AppContext.BaseDirectory), kBuiltin));
                 Directory.CreateDirectory(PathManager.Inst.PluginsPath);
                 string oldBuiltin = Path.Combine(PathManager.Inst.PluginsPath, kBuiltin);
                 if (File.Exists(oldBuiltin)) {
@@ -144,66 +112,115 @@ namespace OpenUtau.Core {
 
         readonly Deque<UCommandGroup> undoQueue = new Deque<UCommandGroup>();
         readonly Deque<UCommandGroup> redoQueue = new Deque<UCommandGroup>();
-        UCommandGroup undoGroup = null;
-        UCommandGroup savedPoint = null;
+        UCommandGroup? undoGroup = null;
+        UCommandGroup? savedPoint = null;
+        UCommandGroup? autosavedPoint = null;
+        public bool Recovered { get; set; } = false; // Flag to not overwrite backup file
 
         public bool ChangesSaved {
             get {
-                return (Project.Saved || Project.tracks.Count == 0) &&
-                    (undoQueue.Count > 0 && savedPoint == undoQueue.Last() || undoQueue.Count == 0 && savedPoint == null);
+                return (Project.Saved || (Project.tracks.Count <= 1 && Project.parts.Count == 0)) &&
+                    (undoQueue.Count > 0 && savedPoint == undoQueue.Last() || undoQueue.Count == 0 && savedPoint == null) &&
+                    !Recovered;
             }
         }
 
+
         private void CrashSave() {
-            if (Project == null || string.IsNullOrEmpty(Project.FilePath)) {
-                return;
-            }
             try {
-                string dir = Path.GetDirectoryName(Project.FilePath);
-                string filename = Path.GetFileNameWithoutExtension(Project.FilePath);
+                if (Project == null) {
+                    Log.Warning("Crash save project is null.");
+                    return;
+                }
+                bool untitled = string.IsNullOrEmpty(Project.FilePath);
+                if (untitled) {
+                    Directory.CreateDirectory(PathManager.Inst.BackupsPath);
+                }
+                string dir = untitled
+                    ? PathManager.Inst.BackupsPath
+                    : Path.GetDirectoryName(Project.FilePath);
+                string filename = untitled
+                    ? "Untitled"
+                    : Path.GetFileNameWithoutExtension(Project.FilePath);
                 string backup = Path.Join(dir, filename + "-backup.ustx");
                 Log.Information($"Saving backup {backup}.");
-                Format.Ustx.Save(backup, Project);
+                Format.Ustx.AutoSave(backup, Project);
                 Log.Information($"Saved backup {backup}.");
             } catch (Exception e) {
                 Log.Error(e, "Save backup failed.");
             }
         }
 
+        public void AutoSave() {
+            if (Project == null) {
+                return;
+            }
+            if (undoQueue.LastOrDefault() == autosavedPoint) {
+                Log.Information("Autosave skipped.");
+                return;
+            }
+            try {
+                bool untitled = string.IsNullOrEmpty(Project.FilePath);
+                if (untitled) {
+                    Directory.CreateDirectory(PathManager.Inst.BackupsPath);
+                }
+                string dir = untitled
+                    ? PathManager.Inst.BackupsPath
+                    : Path.GetDirectoryName(Project.FilePath);
+                string filename = untitled
+                    ? "Untitled"
+                    : Path.GetFileNameWithoutExtension(Project.FilePath);
+
+                string backup = Path.Join(dir, filename + "-autosave.ustx");
+                Log.Information($"Autosave {backup}.");
+                Format.Ustx.AutoSave(backup, Project);
+                Log.Information($"Autosaved {backup}.");
+                autosavedPoint = undoQueue.LastOrDefault();
+            } catch (Exception e) {
+                Log.Error(e, "Autosave failed.");
+            }
+        }
+
         public void ExecuteCmd(UCommand cmd) {
             if (mainThread != Thread.CurrentThread) {
-                Log.Error($"{cmd} not on main thread");
+                if (!(cmd is ProgressBarNotification)) {
+                    Log.Warning($"{cmd} not on main thread");
+                }
+                PostOnUIThread(() => ExecuteCmd(cmd));
+                return;
             }
             if (cmd is UNotification) {
-                if (cmd is SaveProjectNotification) {
-                    var _cmd = cmd as SaveProjectNotification;
+                if (cmd is SaveProjectNotification saveProjectNotif) {
                     if (undoQueue.Count > 0) {
                         savedPoint = undoQueue.Last();
                     }
-                    if (string.IsNullOrEmpty(_cmd.Path)) {
+                    if (string.IsNullOrEmpty(saveProjectNotif.Path)) {
                         Format.Ustx.Save(Project.FilePath, Project);
                     } else {
-                        Format.Ustx.Save(_cmd.Path, Project);
+                        Format.Ustx.Save(saveProjectNotif.Path, Project);
                     }
                 } else if (cmd is LoadProjectNotification notification) {
                     undoQueue.Clear();
                     redoQueue.Clear();
                     undoGroup = null;
                     savedPoint = null;
+                    autosavedPoint = null;
                     Project = notification.project;
                     playPosTick = 0;
-                } else if (cmd is SetPlayPosTickNotification) {
-                    var _cmd = cmd as SetPlayPosTickNotification;
-                    playPosTick = _cmd.playPosTick;
+                } else if (cmd is SetPlayPosTickNotification setPlayPosTickNotif) {
+                    playPosTick = setPlayPosTickNotif.playPosTick;
                 } else if (cmd is SingersChangedNotification) {
-                    SearchAllSingers();
+                    SingerManager.Inst.SearchAllSingers();
                 } else if (cmd is ValidateProjectNotification) {
                     Project.ValidateFull();
-                } else if (cmd is SingersRefreshedNotification) {
+                } else if (cmd is SingersRefreshedNotification || cmd is OtoChangedNotification) {
                     foreach (var track in Project.tracks) {
                         track.OnSingerRefreshed();
                     }
                     Project.ValidateFull();
+                    if (cmd is OtoChangedNotification) {
+                        ExecuteCmd(new PreRenderNotification());
+                    }
                 }
                 Publish(cmd);
                 if (!cmd.Silent) {

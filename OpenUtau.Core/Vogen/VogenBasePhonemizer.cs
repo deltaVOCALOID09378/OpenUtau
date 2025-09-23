@@ -19,22 +19,37 @@ namespace OpenUtau.Core.Vogen {
         }
 
         protected abstract string LangPrefix { get; }
-        protected virtual string Romanize(string lyric) => lyric;
+        protected virtual string[] Romanize(string[] lyric) => lyric;
 
         public override void SetSinger(USinger singer) { }
 
-        public override void SetUp(Note[][] groups) {
+        //Merge slur notes into their previous lyrical note
+        private void AddGroup(List<Note> phrase, Note[] group){
+            if(group.Length==1){
+                phrase.Add(group[0]);
+                return;
+            }
+            phrase.Add(new Note{
+                lyric = group[0].lyric,
+                phoneticHint = group[0].phoneticHint,
+                tone = group[0].tone,
+                position = group[0].position,
+                duration = group[^1].position + group[^1].duration - group[0].position
+            });
+        }
+        public override void SetUp(Note[][] groups, UProject project, UTrack track) {
             if (groups.Length == 0) {
                 return;
             }
-            var phrase = new List<Note>() { groups[0][0] };
+            var phrase = new List<Note>() {};
+            AddGroup(phrase, groups[0]);
             for (int i = 1; i < groups.Length; ++i) {
-                if (groups[i - 1][0].position + groups[i - 1][0].duration == groups[i][0].position) {
-                    phrase.Add(groups[i][0]);
+                if (groups[i - 1][^1].position + groups[i - 1][^1].duration == groups[i][0].position) {
+                    AddGroup(phrase, groups[i]);
                 } else {
                     ProcessPart(phrase);
                     phrase.Clear();
-                    phrase.Add(groups[i][0]);
+                    AddGroup(phrase, groups[i]);
                 }
             }
             if (phrase.Count > 0) {
@@ -43,17 +58,17 @@ namespace OpenUtau.Core.Vogen {
         }
 
         void ProcessPart(IList<Note> notes) {
-            float padding = (float)TickToMs(240);
+            float padding = 1000;
             int totalDur = notes.Sum(n => n.duration);
-            var lyrics = new string[notes.Count, 8];
+            var lyrics = Romanize(notes.Select(n => n.lyric).ToArray());
+            var lyricsPadded = new string[notes.Count, 8];
             for (int i = 0; i < notes.Count; ++i) {
-                var lyric = Romanize(notes[i].lyric);
-                lyric = lyric.PadRight(8, '\0');
+                string lyric = lyrics[i].PadRight(8, '\0');
                 for (int j = 0; j < 8; j++) {
-                    lyrics[i, j] = lyric[j].ToString();
+                    lyricsPadded[i, j] = lyric[j].ToString();
                 }
             }
-            var x = lyrics.ToTensor();
+            var x = lyricsPadded.ToTensor();
             var inputs = new List<NamedOnnxValue>();
             inputs.Add(NamedOnnxValue.CreateFromTensor("letters", x));
             var outputs = G2p.Run(inputs);
@@ -74,7 +89,8 @@ namespace OpenUtau.Core.Vogen {
                         phs.Add($"{LangPrefix}{phsTensor[i, j]}");
                     }
                 }
-                noteDursSec.Add((float)TickToMs(notes[i].duration) / 1000);
+                noteDursSec.Add((float)timeAxis.MsBetweenTickPos(
+                    notes[i].position, notes[i].position + notes[i].duration) / 1000);
             }
             phs.Add("");
             chPhCounts.Add(1);
@@ -95,11 +111,13 @@ namespace OpenUtau.Core.Vogen {
             outputs.Dispose();
 
             int index = 1;
+            double offsetMs = timeAxis.TickPosToMsPos(notes[0].position);
             double notePos = 0;
             for (int i = 1; i < chPhCounts.Count - 1; ++i) {
                 var phonemes = new List<Tuple<string, int>>();
                 for (int j = index; j < index + chPhCounts[i]; ++j) {
-                    phonemes.Add(Tuple.Create(phs[j], MsToTick((positions[j] - notePos) * 1000)));
+                    phonemes.Add(Tuple.Create(phs[j], timeAxis.TicksBetweenMsPos(
+                       offsetMs + notePos * 1000, offsetMs + positions[j] * 1000)));
                 }
                 partResult[notes[i - 1].position] = phonemes;
                 index += (int)chPhCounts[i];

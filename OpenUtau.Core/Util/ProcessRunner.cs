@@ -14,6 +14,7 @@ namespace OpenUtau.Core.Util {
             var threadId = Thread.CurrentThread.ManagedThreadId;
             using (var proc = new Process()) {
                 proc.StartInfo = new ProcessStartInfo(file, args) {
+                    Environment = {{"LANG", "ja_JP.utf8"}},
                     UseShellExecute = false,
                     RedirectStandardOutput = DebugSwitch,
                     RedirectStandardError = true,
@@ -23,13 +24,13 @@ namespace OpenUtau.Core.Util {
                 if (DebugSwitch) {
                     proc.OutputDataReceived += (o, e) => {
                         if (!string.IsNullOrEmpty(e.Data)) {
-                            logger.Information($" >>> [thread-{threadId}] {e.Data}");
+                            logger.Information($"ProcessRunner >>> [thread-{threadId}] {e.Data}");
                         }
                     };
                 }
                 proc.ErrorDataReceived += (o, e) => {
                     if (!string.IsNullOrEmpty(e.Data)) {
-                        logger.Error($" >>> [thread-{threadId}] {e.Data}");
+                        logger.Error($"ProcessRunner >>> [thread-{threadId}] {e.Data}");
                     }
                 };
                 proc.Start();
@@ -43,12 +44,12 @@ namespace OpenUtau.Core.Util {
                     if (proc.WaitForExit(timeoutMs)) {
                         return;
                     }
-                    logger.Warning($"[thread-{threadId}] Timeout, killing...");
+                    logger.Warning($"ProcessRunner >>> [thread-{threadId}] Timeout, killing...");
                     try {
                         proc.Kill();
-                        logger.Warning($"[thread-{threadId}] Killed.");
+                        logger.Warning($"ProcessRunner >>> [thread-{threadId}] Killed.");
                     } catch (Exception e) {
-                        logger.Error(e, $"[thread-{threadId}] Failed to kill");
+                        logger.Error(e, $"ProcessRunner >>> [thread-{threadId}] Failed to kill");
                     }
                 }
             }

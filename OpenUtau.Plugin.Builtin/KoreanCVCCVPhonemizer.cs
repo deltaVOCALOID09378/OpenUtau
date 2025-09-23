@@ -1,19 +1,70 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Melanchall.DryWetMidi.MusicTheory;
 using OpenUtau.Api;
+using OpenUtau.Core;
 using OpenUtau.Core.Ustx;
+using static OpenUtau.Api.Phonemizer;
 
 namespace OpenUtau.Plugin.Builtin {
-    [Phonemizer("Korean CVCCV Phonemizer", "KO CVCCV", "RYUUSEI")]
-    public class KoreanCVCCVPhonemizer : Phonemizer {
+    [Phonemizer("Korean CVCCV Phonemizer", "KO CVCCV", "RYUUSEI", language:"KO")]
+    public class KoreanCVCCVPhonemizer : BaseKoreanPhonemizer {
         static readonly string initialConsonantsTable = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
         static readonly string vowelsTable = "ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ";
+        static readonly string YVowelsTable = "ㅣㅑㅖㅛㅠㅕ";
         static readonly string lastConsonantsTable = "　ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ";
-        static readonly string[] specialConsonantsTable = { "gg", "dd", "bb", "ss", "jj", "t", "k", "ch", "p", "j" };
-        static readonly string[] makeVowelconsonantsTable = { "g", "d", "b", "n", "s", "h", "m", "r" };
+
         static readonly ushort unicodeKoreanBase = 0xAC00;
         static readonly ushort unicodeKoreanLast = 0xD79F;
+
+        public enum TYPE_FLAG {
+            VC_CV,
+            VRC_CV,
+            VC_RCV,
+            VC_NCV,
+            VC_NRCV,
+            VRC_NCV,
+            VC_CV_ADDED_Y,
+            VCC_CV,
+            VCC_CV_ADDED_Y,
+            VC_CCV,
+            VC_CCV_ADDED_Y,
+            _VCV,
+            CV,
+        };
+
+        static readonly TYPE_FLAG[,] typeTable = new TYPE_FLAG[,] {
+            {   TYPE_FLAG._VCV,   TYPE_FLAG.VRC_CV,   TYPE_FLAG._VCV,     TYPE_FLAG._VCV,     TYPE_FLAG.VRC_CV,   TYPE_FLAG._VCV,     TYPE_FLAG._VCV,     TYPE_FLAG._VCV,     TYPE_FLAG.VRC_CV,   TYPE_FLAG._VCV,           TYPE_FLAG.VC_CV_ADDED_Y,    TYPE_FLAG._VCV,     TYPE_FLAG._VCV,     TYPE_FLAG.VRC_CV,   TYPE_FLAG.VRC_CV,   TYPE_FLAG.VRC_CV,   TYPE_FLAG.VRC_CV,   TYPE_FLAG.VRC_CV, TYPE_FLAG._VCV,   }, // 받침누락
+            {   TYPE_FLAG.VC_NCV, TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VCC_CV_ADDED_Y, TYPE_FLAG.VCC_CV_ADDED_Y,   TYPE_FLAG.CV,       TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,  TYPE_FLAG.VC_NCV, }, // ㄱ
+            {   TYPE_FLAG.VC_NCV, TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VCC_CV_ADDED_Y, TYPE_FLAG.VCC_CV_ADDED_Y,   TYPE_FLAG.VC_RCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,  TYPE_FLAG.VC_NCV, }, // ㄲ
+            {   TYPE_FLAG.VC_NCV, TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VCC_CV_ADDED_Y, TYPE_FLAG.VCC_CV_ADDED_Y,   TYPE_FLAG.VC_NRCV,  TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,  TYPE_FLAG.VC_NCV, }, // ㄳ
+            {   TYPE_FLAG.VC_CCV, TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,         TYPE_FLAG.VCC_CV_ADDED_Y,   TYPE_FLAG.CV,       TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV, TYPE_FLAG.VC_CCV, }, // ㄴ
+            {   TYPE_FLAG.VC_CCV, TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,         TYPE_FLAG.VCC_CV_ADDED_Y,   TYPE_FLAG.CV,       TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV, TYPE_FLAG.VC_CCV, }, // ㄵ
+            {   TYPE_FLAG.VC_CCV, TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,         TYPE_FLAG.VCC_CV_ADDED_Y,   TYPE_FLAG.CV,       TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV, TYPE_FLAG.VC_CCV, }, // ㄶ
+            {   TYPE_FLAG.VC_NCV, TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,          TYPE_FLAG.VC_CV_ADDED_Y,    TYPE_FLAG.CV,       TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,  TYPE_FLAG.VC_NCV, }, // ㄷ
+            {   TYPE_FLAG.VC_CCV, TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,         TYPE_FLAG.VC_CCV_ADDED_Y,   TYPE_FLAG.CV,       TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV, TYPE_FLAG.VC_CCV, }, // ㄹ
+            {   TYPE_FLAG.VC_CCV, TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,         TYPE_FLAG.VC_CCV_ADDED_Y,   TYPE_FLAG.VC_NRCV,  TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV, TYPE_FLAG.VC_CCV, }, // ㄺ
+            {   TYPE_FLAG.VC_CCV, TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,         TYPE_FLAG.VC_CCV_ADDED_Y,   TYPE_FLAG.VC_NRCV,  TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV, TYPE_FLAG.VC_CCV, }, // ㄼ
+            {   TYPE_FLAG.VC_CCV, TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,         TYPE_FLAG.VC_CCV_ADDED_Y,   TYPE_FLAG.VC_NRCV,  TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV, TYPE_FLAG.VC_CCV, }, // ㄻ
+            {   TYPE_FLAG.VC_CCV, TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,         TYPE_FLAG.VC_CCV_ADDED_Y,   TYPE_FLAG.VC_NRCV,  TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV, TYPE_FLAG.VC_CCV, }, // ㄽ
+            {   TYPE_FLAG.VC_CCV, TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,         TYPE_FLAG.VC_CCV_ADDED_Y,   TYPE_FLAG.VC_NRCV,  TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV, TYPE_FLAG.VC_CCV, }, // ㄾ
+            {   TYPE_FLAG.VC_CCV, TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,         TYPE_FLAG.VC_CCV_ADDED_Y,   TYPE_FLAG.VC_NRCV,  TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV, TYPE_FLAG.VC_CCV, }, // ㄿ
+            {   TYPE_FLAG.VC_CCV, TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,         TYPE_FLAG.VC_CCV_ADDED_Y,   TYPE_FLAG.VC_NRCV,  TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV, TYPE_FLAG.VC_CCV, }, // ㅀ
+            {   TYPE_FLAG.VC_CCV, TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,         TYPE_FLAG.VC_CCV_ADDED_Y,   TYPE_FLAG.CV,       TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV, TYPE_FLAG.VC_CCV, }, // ㅁ
+            {   TYPE_FLAG.VC_NCV, TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VCC_CV,         TYPE_FLAG.VCC_CV_ADDED_Y,   TYPE_FLAG.CV,       TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,  TYPE_FLAG.VC_NCV, }, // ㅂ
+            {   TYPE_FLAG.VC_NCV, TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VCC_CV,         TYPE_FLAG.VCC_CV_ADDED_Y,   TYPE_FLAG.VC_NRCV,  TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,  TYPE_FLAG.VC_NCV, }, // ㅄ
+            {   TYPE_FLAG.VC_NCV, TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,          TYPE_FLAG.VC_CV_ADDED_Y,    TYPE_FLAG.CV,       TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,  TYPE_FLAG.VC_NCV, }, // ㅅ
+            {   TYPE_FLAG.VRC_NCV,TYPE_FLAG.VRC_NCV,  TYPE_FLAG.VRC_NCV,  TYPE_FLAG.VRC_NCV,  TYPE_FLAG.VRC_NCV,  TYPE_FLAG.VRC_NCV,  TYPE_FLAG.VRC_NCV,  TYPE_FLAG.VRC_NCV,  TYPE_FLAG.VRC_NCV,  TYPE_FLAG.VRC_NCV,        TYPE_FLAG.VRC_NCV,          TYPE_FLAG.VC_RCV,   TYPE_FLAG.VRC_NCV,  TYPE_FLAG.VRC_NCV,  TYPE_FLAG.VRC_NCV,  TYPE_FLAG.VRC_NCV,  TYPE_FLAG.VRC_NCV,  TYPE_FLAG.VRC_NCV,TYPE_FLAG.VRC_NCV,}, // ㅆ
+            {   TYPE_FLAG.VC_CCV, TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VCC_CV,         TYPE_FLAG.VCC_CV_ADDED_Y,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV,   TYPE_FLAG.VCC_CV, TYPE_FLAG.VC_CCV, }, // ㅇ
+            {   TYPE_FLAG.VC_NCV, TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VCC_CV,         TYPE_FLAG.VC_CV_ADDED_Y,    TYPE_FLAG.CV,       TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,  TYPE_FLAG.VC_NCV, }, // ㅈ
+            {   TYPE_FLAG.VC_NCV, TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VCC_CV,         TYPE_FLAG.VC_CV_ADDED_Y,    TYPE_FLAG.CV,       TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,  TYPE_FLAG.VC_NCV, }, // ㅊ
+            {   TYPE_FLAG.VC_NCV, TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VCC_CV,         TYPE_FLAG.VC_CV_ADDED_Y,    TYPE_FLAG.VC_NRCV,  TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,  TYPE_FLAG.VC_NCV, }, // ㅋ
+            {   TYPE_FLAG.VC_NCV, TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VCC_CV,         TYPE_FLAG.VC_CV_ADDED_Y,    TYPE_FLAG.VC_NRCV,  TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,  TYPE_FLAG.VC_NCV, }, // ㅌ
+            {   TYPE_FLAG.VC_NCV, TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VCC_CV,         TYPE_FLAG.VCC_CV_ADDED_Y,   TYPE_FLAG.VC_NRCV,  TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,  TYPE_FLAG.VC_NCV, }, // ㅍ
+            {   TYPE_FLAG.VC_NCV, TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,          TYPE_FLAG.VC_CV_ADDED_Y,    TYPE_FLAG.CV,       TYPE_FLAG.VC_NCV,   TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,    TYPE_FLAG.VC_CV,  TYPE_FLAG.VC_NCV, }, // ㅎ
+                // ㄱ             // ㄲ               // ㄴ               // ㄷ               // ㄸ               // ㄹ               // ㅁ               // ㅂ               // ㅃ               // ㅅ                 // ㅆ                       // ㅇ               // ㅈ               // ㅉ               // ㅊ               // ㅋ               // ㅌ               // ㅍ             // ㅎ
+        };
 
         private char[] SeparateHangul(char letter) {
             if (letter == 0) return new char[] { '　', '　', '　' };
@@ -33,36 +84,66 @@ namespace OpenUtau.Plugin.Builtin {
             return new char[] { initialConsonantsTable[i], vowelsTable[v], lastConsonantsTable[l] };
         }
 
-        private bool CheckSpecialCC(string consonants) {
-            return specialConsonantsTable.Contains(consonants);
-        }
-
-        private bool CheckMakeVowelCC(string consonants) {
-            return makeVowelconsonantsTable.Contains(consonants);
-        }
-
         // 초성
-        static readonly string[] initialConsonants = new string[] {
+        static readonly string[] continuousinitialConsonants = new string[] {
+            "g=ㄱ,ㄺ",
+            "gg=ㄲ",
+            "n=ㄴ,ㄵ,ㄶ",
+            "d=ㄷ",
+            "dd=ㄸ",
+            "r=ㄹ",
+            "m=ㅁ,ㄻ",
+            "b=ㅂ,ㄼ",
+            "bb=ㅃ",
+            "s=ㅅ,ㅄ,ㄽ,ㄳ",
+            "ss=ㅆ",
+            "=ㅇ",
+            "j=ㅈ",
+            "jj=ㅉ",
+            "ch=ㅊ",
+            "k=ㅋ",
+            "t=ㅌ",
+            "p=ㅍ,ㄿ",
+            "h=ㅎ,ㅀ",
+        };
+
+        static readonly string[] ccvContinuousinitialConsonants = new string[] {
             "g=ㄱ",
+            "gg=ㄲ",
             "n=ㄴ",
             "d=ㄷ",
-            "r=ㄹ",
-            "l=l",
+            "dd=ㄸ",
+            "l=ㄹ,ㄺ,ㄼ,ㄻ,ㄽ,ㄾ,ㄿ,ㅀ",
             "m=ㅁ",
             "b=ㅂ",
+            "bb=ㅃ",
             "s=ㅅ",
-            "=ㅇ,　",
+            "ss=ㅆ",
+            "=ㅇ",
             "j=ㅈ",
+            "jj=ㅉ",
             "ch=ㅊ",
-            "k=ㅋ,k",
+            "k=ㅋ",
             "t=ㅌ",
             "p=ㅍ",
             "h=ㅎ",
-            "gg=ㄲ",
-            "dd=ㄸ",
-            "bb=ㅃ",
-            "ss=ㅆ",
-            "jj=ㅉ",
+        };
+
+        static readonly string[] vrcContinuousinitialConsonants = new string[] {
+            "gg=ㄱ,ㄲ",
+            "n=ㄴ,ㄵ,ㄶ",
+            "dd=ㄷ,ㄸ",
+            "r=ㄹ",
+            "m=ㅁ",
+            "d=ㅎ",
+            "bb=ㅂ,ㅃ",
+            "ss=ㅅ,ㅆ",
+            "=ㅇ",
+            "jj=ㅈ,ㅉ",
+            "ch=ㅊ",
+            "k=ㅋ",
+            "t=ㅌ",
+            "p=ㅍ",
         };
 
         // 일반 모음
@@ -86,7 +167,6 @@ namespace OpenUtau.Plugin.Builtin {
             "wi=ㅟ",
         };
 
-        // V-V의 경우 이전 모음으로 대체
         static readonly string[] subsequentVowels = new string[] {
             "a=ㅏ,ㅑ,ㅘ",
             "eo=ㅓ,ㅕ,ㅝ",
@@ -97,280 +177,70 @@ namespace OpenUtau.Plugin.Builtin {
             "i=ㅣ,ㅢ,ㅟ",
         };
 
-        // 끝소리일 경우에만 동작
         static readonly string[] lastConsonants = new string[] {
-            "k=ㄱ,ㅋ,ㄲ,ㄳ,ㄺ",
-            "n=ㄴ,ㄵ,ㄶ",
-            "t=ㄷ,ㅈ,ㅊ,ㅌ,ㅎ,ㄸ,ㅅ",
-            "s=ㅆ",
-            "l=ㄹ,ㄼ,l",
-            "rl=ㄽ,ㄾ,ㄿ,ㅀ,0",
-            "m=ㅁ,ㄻ",
-            "p=ㅂ,ㅍ,ㅄ,ㅃ",
+            "K=ㄱ,ㅋ,ㄲ,ㄳ",
+            "T=ㅅ,ㅈ,ㅌ,ㄷ,ㅆ,ㅎ,ㅊ,ㄸ",
+            "P=ㅂ,ㅍ,ㅃ,ㅄ",
+            "m=ㅁ",
+            "n=ㄴ,ㄵ",
             "ng=ㅇ",
+            "l=ㄹ,ㄺ,ㄻ,ㄼ,ㄽ,ㄾ,ㄿ,ㅀ",
+            "-=　"
         };
 
-        static readonly string[] subsequentLastConsonants = new string[] {
-            "-=ㄱ,ㅋ,ㄲ,ㄳ,ㄺ,ㄷ,ㅅ,ㅈ,ㅊ,ㅌ,ㅆ,ㅎ,ㅂ,ㅍ,ㅄ,ㅇ",
+        static readonly string[] vcLastConsonants = new string[] {
+            "k=ㄱ,ㅋ,ㄲ,ㄳ",
+            "t=ㅅ,ㅈ,ㅌ,ㄸ,ㅊ,ㅉ,ㄷ,ㅎ",
+            "p=ㅍ,ㅃ,ㅂ,ㅄ",
+            "m=ㅁ",
             "n=ㄴ,ㄵ,ㄶ",
-            "rl=ㄹ",
-            "l=ㄼ,ㄽ,ㄾ,ㄿ,ㅀ,l",
-            "m=ㅁ,ㄻ",
+            "ng=ㅇ",
+            "l=ㄹ,ㄺ,ㄻ,ㄼ,ㄽ,ㄾ,ㄿ,ㅀ",
+            "ss=ㅆ",
         };
 
-        // 표준발음법 적용
-        static readonly string[] ruleOfConsonants = new string[] {
-            // 자음동화: (비음화, 유음화)
-            "ㅇㄴ=ㅇㄴ,ㄱㄴ,ㄱㄹ,ㅇㄹ",
-            "ㅇㄱ=ㅇㄱ,ㄱㅁ",
-            "ㄴㄴ=ㄴㄴ,ㄷㄴ,ㄵㄴ",
-            "ㄴㅁ=ㄴㅁ,ㄷㅁ,ㄵㅁ",
-            "ㅁㄴ=ㅁㄴ,ㅂㄴ,ㅂㄹ,ㅁㄹ",
-            "ㅁㅁ=ㅁㅁ,ㅂㅁ",
-            "ll=ㄹㄹ,ㄴㄹ,ㄵㄹ",
-
-            // 구개음화
-            "　ㅈㅣ=ㄷㅇㅣ",
-            "　ㅈㅓ=ㄷㅇㅓ",
-            "　ㅈㅓ=ㄷㅇㅕ",
-            "　ㅊㅣ=ㄷㅎㅣ",
-            "　ㅊㅓ=ㄷㅎㅓ",
-            "　ㅊㅓ=ㄷㅎㅕ",
-            "　ㅊㅣ=ㅌㅇㅣ",
-            "　ㅊㅓ=ㅌㅇㅓ",
-            "　ㅊㅓ=ㅌㅇㅕ",
-            "　ㅊㅣ=ㅌㅎㅣ",
-            "　ㅊㅓ=ㅌㅎㅓ",
-            "　ㅊㅓ=ㅌㅎㅕ",
-            "ㄹㅊㅣ=ㄾㅇㅣ",
-            "ㄹㅊㅓ=ㄾㅇㅓ",
-            "ㄹㅊㅓ=ㄾㅇㅕ",
-            "ㄹㅊㅣ=ㄾㅎㅣ",
-            "ㄹㅊㅓ=ㄾㅎㅓ",
-            "ㄹㅊㅓ=ㄾㅎㅕ",
-
-            // 경음화
-            "ㄱㄲ=ㄱㄲ,ㄱㄱ,ㄲㄱ",
-            "ㄱㄸ=ㄱㄸ,ㄱㄷ,ㄺㄷ,ㄺㅌ,ㄺㄸ",
-            "ㄱㅃ=ㄱㅃ,ㄱㅂ",
-            "ㄱㅆ=ㄱㅆ,ㄱㅅ,ㄳㅇ",
-            "ㄱㅉ=ㄱㅉ,ㄱㅈ",
-            "ㄴㄷ=ㄴㄸ,ㄵㄷ,ㄵㄸ,ㄶㅌ,ㄶㄸ",
-            "ㄷㄲ=ㄷㄲ,ㄷㄱ",
-            "ㄷㄸ=ㄷㄸ,ㄷㄷ",
-            "ㄷㅃ=ㄷㅃ,ㄷㅂ",
-            "ㄷㅆ=ㄷㅆ,ㄷㅅ",
-            "ㄷㅉ=ㄷㅉ",
-            "ㅁㄸ=ㅁㄸ,ㄻㄷ,ㄻㅌ,ㄻㄸ",
-            "ㅂㄲ=ㅂㄲ,ㅂㄱ,ㅄㄲ,ㅄㄱ,ㄼㄱ,ㄼㅋ,ㄼㄲ",
-            "ㅂㄸ=ㅂㄸ,ㅂㄷ,ㅄㄸ,ㅄㄷ",
-            "ㅂㅃ=ㅂㅃ,ㅂㅂ,ㅄㅃ,ㅄㅂ",
-            "ㅂㅆ=ㅂㅆ,ㄼㅅ,ㄼㅆ,ㅂㅅ,ㅄㅆ,ㅄㅅ,ㅄㅇ",
-            "ㅂㅉ=ㅂㅉ,ㅂㅈ,ㅄㅉ,ㅄㅈ",
-            "ㅅㄲ=ㅅㄲ,ㅅㄱ,ㅆㄲ,ㅆㄱ",
-            "ㅅㄸ=ㅅㄸ,ㅅㄷ,ㅆㄸ,ㅆㄷ",
-            "ㅅㅃ=ㅅㅃ,ㅅㅂ,ㅆㅃ,ㅆㅂ",
-            "ㅅㅆ=ㅅㅆ,ㅅㅅ,ㅆㅆ,ㅆㅅ,ㅆㅇ",
-            "ㅅㅉ=ㅅㅉ,ㅅㅈ,ㅆㅉ,ㅆㅈ",
-            "ㅈㄲ=ㅈㄲ,ㅈㄱ",
-            "ㅈㄸ=ㅈㄸ,ㅈㄷ",
-            "ㅈㅃ=ㅈㅃ,ㅈㅂ",
-            "ㅈㅉ=ㅈㅉ,ㅈㅈ",
-            "ㅈㅅ=ㅈㅆ,ㅈㅅ",
-
-            // 자음 축약
-            "　ㅋ=ㄱㅎ",
-            "　ㅌ=ㄷㅎ",
-            "　ㅍ=ㅂㅎ",
-            "　ㅊ=ㅈㅎ",
-            "ㄴㅊ=ㄴㅊ,ㄵㅎ",
-
-            // 탈락
-            "ㄴㅌ=ㄴㅌ,ㄶㄷ",
-            "　ㄴ=ㄶㅇ",
-            "ㄹㅌ=ㄹㅌ,ㄼㄷ,ㄼㅌ,ㄽㄷ,ㄾㅌ,ㄾㄷ,ㄽㅌ,ㄿㄷ,ㄿㅌ,ㅀㄷ,ㄾㅇ",
-            "ㄹㄸ=ㄹㄸ,ㅀㅌ,ㅀㄸ",
-            "　ㄹ=ㅀㅇ",
-
-            // 연음
-            "　ㄱ=ㄱㅇ",
-            "　ㄲ=ㄲㅇ",
-            "　ㄴ=ㄴㅇ",
-            "ㄴㅈ=ㄴㅈ,ㄵㅇ",
-            "　ㄹ=ㄹㅇ",
-            "ㄹㄱ=ㄹㄱ,ㄺㅇ",
-            "ㄹㅁ=ㄹㅁ,ㄻㅇ",
-            "ㄹㅂ=ㄹㅂ,ㄼㅇ",
-            "ㄹㅆ=ㄹㅅ,ㄽㅇ,ㄹㅆ",
-            "ㄹㅍ=ㄹㅍ,ㄿㅇ,ㄺㅂ,ㄻㅂ,ㄼㅂ,ㄽㅂ,ㄾㅂ,ㄿㅂ,ㅀㅂ,ㄹㅃ,ㄺㅃ,ㄻㅃ,ㄼㅃ,ㄽㅃ,ㄾㅃ,ㄿㅃ,ㅀㅃ",
-            "　ㅁ=ㅁㅇ",
-            "　ㅂ=ㅂㅇ",
-            "　ㅅ=ㅅㅇ",
-            "　ㅈ=ㅈㅇ",
-            "　ㅊ=ㅊㅇ",
-            "　ㅋ=ㅋㅇ",
-            "　ㅌ=ㅌㅇ",
-            "　ㅍ=ㅍㅇ",
-            "　ㅎ=ㅎㅇ",
-
-            // 이 외
-            "ㄱㅋ=ㄱㅋ",
-            "ㄱㅌ=ㄱㅌ",
-            "ㄱㅊ=ㄱㅊ",
-            "ㄱㅍ=ㄱㅍ",
-            "ㄲㅂ=ㄲㅂ",
-            "ㄲㅈ=ㄲㅈ",
-            "ㄲㅉ=ㄲㅉ",
-            "ㄲㅅ=ㄲㅅ,ㄲㅆ",
-            "ㄲㅁ=ㄲㅁ",
-            "ㄲㄴ=ㄲㄴ",
-            "ㄲㄹ=ㄲㄹ",
-            "ㄲㅋ=ㄲㅋ",
-            "ㄲㅌ=ㄲㅌ",
-            "ㄲㅊ=ㄲㅊ",
-            "ㄲㅍ=ㄲㅍ,ㄲㅃ",
-            "ㄴㅂ=ㄴㅂ,ㄵㅂ,ㄶㅂ",
-            "ㄴㄷ=ㄴㄷ",
-            "ㄴㄱ=ㄴㄱ,ㄵㄱ,ㄶㄱ",
-            "ㄴㅆ=ㄴㅆ,ㄵㅆ,ㄶㅆ",
-            "ㄴㅅ=ㄴㅅ,ㄵㅅ,ㄶㅅ",
-            "ㄴㅎ=ㄴㅎ,ㄶㅎ",
-            "ㄴㅋ=ㄴㅋ,ㄵㅋ,ㄶㅋ,ㄴㄲ,ㄵㄲ,ㄶㄲ",
-            "ㄴㅃ=ㄴㅃ,ㄵㅃ,ㄶㅃ",
-            "ㄴㅍ=ㄴㅍ,ㄵㅍ,ㄶㅍ,",
-            "ㄷㄹ=ㄷㄹ",
-            "ㄷㅋ=ㄷㅋ",
-            "ㄷㅌ=ㄷㅌ",
-            "ㄷㅊ=ㄷㅊ",
-            "ㄷㅍ=ㄷㅍ",
-            "ㄹㅈ=ㄹㅈ,ㄺㅈ,ㄻㅈ,ㄼㅈ,ㄽㅈ,ㄾㅈ,ㄿㅈ,ㅀㅈ",
-            "ㄹㅉ=ㄹㅉ,ㄺㅉ,ㄻㅉ,ㄼㅉ,ㄽㅉ,ㄾㅉ,ㄿㅉ,ㅀㅉ",
-            "ㄹㄷ=ㄹㄷ",
-            "ㄹㄴ=ㄹㄴ,ㄺㄴ,ㄻㄴ,ㄼㄴ,ㄽㄴ,ㄾㄴ,ㄿㄴ,ㅀㄴ",
-            "ㄹㅎ=ㄹㅎ,ㄺㅎ,ㄻㅎ,ㄼㅎ,ㄽㅎ,ㄾㅎ,ㄿㅎ,ㅀㅎ",
-            "ㄹㅋ=ㄹㅋ,ㄺㅋ,ㄻㅋ,ㄽㅋ,ㄾㅋ,ㄿㅋ,ㅀㅋ,ㄹㄲ,ㄺㄲ,ㄻㄲ,ㄽㄲ,ㄾㄲ,ㄿㄲ,ㅀㄲ",
-            "ㄹㅊ=ㄹㅊ,ㄺㅊ,ㄻㅊ,ㄼㅊ,ㄽㅊ,ㄾㅊ,ㄿㅊ,ㅀㅊ",
-            "ㅁㄱ=ㅁㄱ",
-            "ㅁㅂ=ㅁㅂ",
-            "ㅁㅈ=ㅁㅈ",
-            "ㅁㅉ=ㅁㅉ",
-            "ㅁㄷ=ㅁㄷ",
-            "ㅁㅅ=ㅁㅅ,ㅁㅆ",
-            "ㅁㅋ=ㅁㅋ",
-            "ㅁㅌ=ㅁㅌ",
-            "ㅁㅊ=ㅁㅊ",
-            "ㅁㅍ=ㅁㅍ,ㅁㅃ",
-            "ㅂㅋ=ㅂㅋ,ㅄㅋ",
-            "ㅂㅌ=ㅂㅌ,ㅄㅌ",
-            "ㅂㅊ=ㅂㅊ,ㅄㅊ",
-            "ㅂㅍ=ㅂㅍ,ㅄㅍ",
-            "ㅅㅁ=ㅅㅁ,ㅆㅁ",
-            "ㅅㄴ=ㅅㄴ,ㅆㄴ",
-            "ㅅㄹ=ㅅㄹ,ㅆㄹ",
-            "ㅅㅋ=ㅅㅋ,ㅆㅋ",
-            "ㅅㅌ=ㅅㅌ,ㅆㅌ",
-            "ㅅㅊ=ㅅㅊ,ㅆㅊ",
-            "ㅅㅍ=ㅅㅍ,ㅆㅍ",
-            "ㅅㅎ=ㅅㅎ,ㅆㅎ",
-            "ㅇㅂ=ㅇㅂ",
-            "ㅇㅈ=ㅇㅈ",
-            "ㅇㅉ=ㅇㅉ",
-            "ㅇㄷ=ㅇㄷ",
-            "ㅇㅅ=ㅇㅅ,ㅇㅆ",
-            "ㅇㅁ=ㅇㅁ",
-            "ㅇ1=ㅇㅇ",
-            "ㅇㅎ=ㅇㅎ",
-            "ㅇㄲ=ㅇㄲ",
-            "ㅇㅋ=ㅇㅋ",
-            "ㅇㅌ=ㅇㅌ,ㅇㄸ",
-            "ㅇㅊ=ㅇㅊ",
-            "ㅇㅃ=ㅇㅃ",
-            "ㅇㅍ=ㅇㅍ",
-            "ㅈㅁ=ㅈㅁ",
-            "ㅈㄴ=ㅈㄴ",
-            "ㅈㄹ=ㅈㄹ",
-            "ㅈㅋ=ㅈㅋ",
-            "ㅈㅌ=ㅈㅌ",
-            "ㅈㅊ=ㅈㅊ",
-            "ㅈㅍ=ㅈㅍ",
-            "ㅊㅂ=ㅊㅂ",
-            "ㅊㅉ=ㅊㅉ",
-            "ㅊㅈ=ㅊㅈ",
-            "ㅊㄷ=ㅊㄷ",
-            "ㅊㄱ=ㅊㄱ",
-            "ㅊㅅ=ㅊㅅ,ㅊㅆ",
-            "ㅊㅁ=ㅊㅁ",
-            "ㅊㄴ=ㅊㄴ",
-            "ㅊㄹ=ㅊㄹ",
-            "ㅊㅋ=ㅊㅋ,ㅊㄲ",
-            "ㅊㅌ=ㅊㅌ,ㅊㄸ",
-            "ㅊㅊ=ㅊㅊ",
-            "ㅊㅍ=ㅊㅍ,ㅊㅃ",
-            "ㅋㅂ=ㅋㅂ",
-            "ㅋㅉ=ㅋㅉ",
-            "ㅋㅈ=ㅋㅈ",
-            "ㅋㄷ=ㅋㄷ",
-            "ㅋㄱ=ㅋㄱ",
-            "ㅋㅁ=ㅋㅁ",
-            "ㅋㄴ=ㅋㄴ",
-            "ㅋㄹ=ㅋㄹ",
-            "ㅋㅋ=ㅋㅋ,ㅋㄲ",
-            "ㅋㅌ=ㅋㅌ,ㅋㄸ",
-            "ㅋㅊ=ㅋㅊ",
-            "ㅋㅍ=ㅋㅍ,ㅋㅃ",
-            "ㅌㅂ=ㅌㅂ",
-            "ㅌㅉ=ㅌㅉ",
-            "ㅌㅈ=ㅌㅈ",
-            "ㅌㄷ=ㅌㄷ",
-            "ㅌㄱ=ㅌㄱ",
-            "ㅌㅅ=ㅌㅅ,ㅌㅆ",
-            "ㅌㅁ=ㅌㅁ",
-            "ㅌㄴ=ㅌㄴ",
-            "ㅌㄹ=ㅌㄹ",
-            "ㅌㅋ=ㅌㅋ,ㅌㄲ",
-            "ㅌㅌ=ㅌㅌ,ㅌㄸ",
-            "ㅌㅊ=ㅌㅊ",
-            "ㅌㅍ=ㅌㅍ,ㅌㅃ",
-            "ㅍㅂ=ㅍㅂ",
-            "ㅍㅉ=ㅍㅉ",
-            "ㅍㅈ=ㅍㅈ",
-            "ㅍㄷ=ㅍㄷ",
-            "ㅍㄱ=ㅍㄱ",
-            "ㅍㅅ=ㅍㅅ,ㅍㅆ",
-            "ㅍㅁ=ㅍㅁ",
-            "ㅍㄴ=ㅍㄴ",
-            "ㅍㄹ=ㅍㄹ",
-            "ㅍㅋ=ㅍㅋ,ㅍㄲ",
-            "ㅍㅌ=ㅍㅌ,ㅍㄸ",
-            "ㅍㅊ=ㅍㅊ",
-            "ㅍㅍ=ㅍㅍ,ㅍㅃ",
-            "ㅎㅂ=ㅎㅂ",
-            "ㅎㅉ=ㅎㅉ",
-            "ㅎㅈ=ㅎㅈ",
-            "ㅎㄷ=ㅎㄷ",
-            "ㅎㄱ=ㅎㄱ",
-            "ㅎㅅ=ㅎㅅ,ㅎㅆ",
-            "ㅎㅁ=ㅎㅁ",
-            "ㅎㄴ=ㅎㄴ",
-            "ㅎㄹ=ㅎㄹ",
-            "ㅎㅎ=ㅎㅎ",
-            "ㅎㅋ=ㅎㅋ,ㅎㄲ",
-            "ㅎㅌ=ㅎㅌ,ㅎㄸ",
-            "ㅎㅊ=ㅎㅊ",
-            "ㅎㅍ=ㅎㅍ,ㅎㅃ",
+        static readonly string[] vrcLastConsonants = new string[] {
+            "k=ㄱ,ㅋ,ㄲ,ㄳ",
+            "t=ㅅ,ㅈ,ㅌ,ㄸ,ㅊ,ㅉ,ㄷ,ㅎ,ㅆ",
+            "p=ㅍ,ㅃ,ㅂ,ㅄ",
+            "m=ㅁ",
+            "n=ㄴ,ㄵ,ㄶ",
+            "ng=ㅇ",
+            "l=ㄹ,ㄺ,ㄻ,ㄼ,ㄽ,ㄾ,ㄿ,ㅀ",
         };
 
+        /// <summary>
+        /// Apply Korean sandhi rules to Hangeul lyrics.
+        /// </summary>
+        public override void SetUp(Note[][] groups, UProject project, UTrack track) {
+            // variate lyrics 
+            KoreanPhonemizerUtil.RomanizeNotes(groups, false);
+        }
 
         static readonly Dictionary<string, string> initialConsonantLookup;
+        static readonly Dictionary<string, string> ccvContinuousinitialConsonantsLookup;
+        static readonly Dictionary<string, string> vrcInitialConsonantLookup;
         static readonly Dictionary<string, string> vowelLookup;
-        static readonly Dictionary<string, string> subsequentVowelsLookup;
+        static readonly Dictionary<string, string> subsequentVowelLookup;
         static readonly Dictionary<string, string> lastConsonantsLookup;
-        static readonly Dictionary<string, string> subsequentLastConsonantsLookup;
-        static readonly Dictionary<string, string> ruleOfConsonantsLookup;
+        static readonly Dictionary<string, string> vcLastConsonantsLookup;
+        static readonly Dictionary<string, string> vrcLastConsonantsLookup;
 
 
         static KoreanCVCCVPhonemizer() {
-            initialConsonantLookup = initialConsonants.ToList()
+            initialConsonantLookup = continuousinitialConsonants.ToList()
+                .SelectMany(line => {
+                    var parts = line.Split('=');
+                    return parts[1].Split(',').Select(cv => (cv, parts[0]));
+                })
+                .ToDictionary(t => t.Item1, t => t.Item2);
+            ccvContinuousinitialConsonantsLookup = ccvContinuousinitialConsonants.ToList()
+                .SelectMany(line => {
+                    var parts = line.Split('=');
+                    return parts[1].Split(',').Select(cv => (cv, parts[0]));
+                })
+                .ToDictionary(t => t.Item1, t => t.Item2);
+            vrcInitialConsonantLookup = vrcContinuousinitialConsonants.ToList()
                 .SelectMany(line => {
                     var parts = line.Split('=');
                     return parts[1].Split(',').Select(cv => (cv, parts[0]));
@@ -382,7 +252,7 @@ namespace OpenUtau.Plugin.Builtin {
                     return parts[1].Split(',').Select(cv => (cv, parts[0]));
                 })
                 .ToDictionary(t => t.Item1, t => t.Item2);
-            subsequentVowelsLookup = subsequentVowels.ToList()
+            subsequentVowelLookup = subsequentVowels.ToList()
                 .SelectMany(line => {
                     var parts = line.Split('=');
                     return parts[1].Split(',').Select(cv => (cv, parts[0]));
@@ -394,178 +264,394 @@ namespace OpenUtau.Plugin.Builtin {
                     return parts[1].Split(',').Select(cv => (cv, parts[0]));
                 })
                 .ToDictionary(t => t.Item1, t => t.Item2);
-            subsequentLastConsonantsLookup = subsequentLastConsonants.ToList()
+            vcLastConsonantsLookup = vcLastConsonants.ToList()
                 .SelectMany(line => {
                     var parts = line.Split('=');
                     return parts[1].Split(',').Select(cv => (cv, parts[0]));
                 })
                 .ToDictionary(t => t.Item1, t => t.Item2);
-            ruleOfConsonantsLookup = ruleOfConsonants.ToList()
+            vrcLastConsonantsLookup = vrcLastConsonants.ToList()
                 .SelectMany(line => {
                     var parts = line.Split('=');
                     return parts[1].Split(',').Select(cv => (cv, parts[0]));
                 })
                 .ToDictionary(t => t.Item1, t => t.Item2);
-
         }
 
         // Store singer in field, will try reading presamp.ini later
         private USinger singer;
+
         public override void SetSinger(USinger singer) => this.singer = singer;
+        
+        // Legacy mapping. Might adjust later to new mapping style.
+		public override bool LegacyMapping => true;
         
         public override Result Process(Note[] notes, Note? prev, Note? next, Note? prevNeighbour, Note? nextNeighbour, Note[] prevs) {
             var prevLyric = prevNeighbour?.lyric;
+            var nextLyric = nextNeighbour?.lyric;
             char[] prevKoreanLyrics = { '　', '　', '　' };
-            bool isPrevEndV = true;
-            if (prevLyric != null && prevLyric[0] >= '가' && prevLyric[0] <= '힣') {
-                prevKoreanLyrics = SeparateHangul(prevLyric != null ? prevLyric[0] : '\0');
+            char[] currentKoreanLyrics = { '　', '　', '　' };
+            char[] nextKoreanLyrics = { '　', '　', '　' };
+
+            int totalDuration = notes.Sum(n => n.duration);
+            int vcLength = 120;
+            
+            var phoneticHint = RenderPhoneticHint(singer, notes[0], totalDuration);
+            if (phoneticHint != null) {
+                return (Result) phoneticHint;
             }
 
+            var romaji2Korean = ConvertRomajiNoteToHangeul(notes, prevNeighbour, nextNeighbour);
+            if (romaji2Korean != null) {
+                notes = romaji2Korean.KoreanLyricNotes;
+                prevNeighbour = romaji2Korean.KoreanLyricPrevNote;
+                nextNeighbour = romaji2Korean.KoreanLyricNextNote;
+                
+                prevLyric = prevNeighbour?.lyric;
+                nextLyric = nextNeighbour?.lyric;
+            } 
+
+
+            List<Phoneme> phonemesArr = new List<Phoneme>();
+
             var currentLyric = notes[0].lyric;
-            if (!(currentLyric[0] >= '가' && currentLyric[0] <= '힣')) {
+            currentKoreanLyrics = SeparateHangul(currentLyric != null ? currentLyric[0] : '\0');
+
+
+            if (currentLyric[0] >= '가' && currentLyric[0] <= '힣') {
+
+            } else {
                 return new Result {
                     phonemes = new Phoneme[] {
                         new Phoneme {
-                            phoneme = $"{currentLyric}",
-                        }
-                    },
-                };
+                        phoneme = currentLyric,
+                    }
+                }};
             }
-            var currentKoreanLyrics = SeparateHangul(currentLyric[0]);
 
-            var nextLyric = nextNeighbour?.lyric;
-            char[] nextKoreanLyrics = { '　', '　', '　' };
+            if (prevLyric != null && prevLyric[0] >= '가' && prevLyric[0] <= '힣') {
+                // 앞글자 있음
+                prevKoreanLyrics = SeparateHangul(prevLyric[0]);
+
+                TYPE_FLAG type = typeTable[lastConsonantsTable.IndexOf(prevKoreanLyrics[2]), initialConsonantsTable.IndexOf(currentKoreanLyrics[0])];
+
+
+                initialConsonantLookup.TryGetValue(currentKoreanLyrics[0].ToString(), out var currentConsonants);
+                ccvContinuousinitialConsonantsLookup.TryGetValue(currentKoreanLyrics[0].ToString(), out var currentCCVConsonants);
+                vrcInitialConsonantLookup.TryGetValue(currentKoreanLyrics[0].ToString(), out var vrcInitialConsonants);
+                vowelLookup.TryGetValue(currentKoreanLyrics[1].ToString(), out var currentVowel);
+                lastConsonantsLookup.TryGetValue(prevKoreanLyrics[2].ToString(), out var prevLastConsonants);
+                subsequentVowelLookup.TryGetValue(currentKoreanLyrics[1].ToString(), out var currentSubsequentVowel);
+                subsequentVowelLookup.TryGetValue(prevKoreanLyrics[1].ToString(), out var prevSubsequentVowel);
+                initialConsonantLookup.TryGetValue(prevKoreanLyrics[2].ToString(), out var prevInitialConsonants);
+
+                switch (type) {
+                    case TYPE_FLAG.VCC_CV:
+                        phonemesArr.Add(
+                                new Phoneme {
+                                    phoneme = $"{currentConsonants}{currentVowel}",
+                                }
+                            );
+                        break;
+
+                    case TYPE_FLAG.VCC_CV_ADDED_Y:
+                        phonemesArr.Add(
+                                new Phoneme {
+                                    phoneme = $"ss{currentVowel}",
+                                }
+                            );
+                        break;
+
+                    case TYPE_FLAG.VC_CCV:
+                        phonemesArr.Add(
+                            new Phoneme {
+                                phoneme = $"{prevLastConsonants} {currentCCVConsonants}{currentVowel}",
+                            }
+                        );
+
+                        break;
+
+                    case TYPE_FLAG.VC_CCV_ADDED_Y:
+                        phonemesArr.Add(
+                            new Phoneme {
+                                phoneme = $"{currentCCVConsonants}{currentVowel}",
+                            }
+                        );
+                                                
+                        break;
+
+                    case TYPE_FLAG.VC_NCV:
+                        phonemesArr.Add(
+                            new Phoneme {
+                                phoneme = $"- {currentCCVConsonants}{currentVowel}",
+                            }
+                        );
+
+                        break;
+
+                    case TYPE_FLAG.VC_NRCV:
+                        phonemesArr.Add(
+                            new Phoneme {
+                                phoneme = $"- {prevInitialConsonants}{currentVowel}",
+                            }
+                        );
+
+                        break;
+
+                    case TYPE_FLAG.VC_CV:
+                        phonemesArr.Add(
+                            new Phoneme {
+                                phoneme = $"{currentConsonants}{currentVowel}",
+                            }
+                        );
+
+                        break;
+
+                    case TYPE_FLAG.VRC_CV:
+                        phonemesArr.Add(
+                            new Phoneme {
+                                phoneme = $"{currentConsonants}{currentVowel}",
+                            }
+                        );
+
+                        break;
+
+                    case TYPE_FLAG.VRC_NCV:
+                        phonemesArr.Add(
+                            new Phoneme {
+                                phoneme = $"- {vrcInitialConsonants}{currentVowel}",
+                            }
+                        );
+
+                        break;
+
+                    case TYPE_FLAG.VC_CV_ADDED_Y:
+                        phonemesArr.Add(
+                            new Phoneme {
+                                phoneme = $"{currentConsonants}{currentVowel}",
+                            }
+                        );
+
+                        break;
+
+                    case TYPE_FLAG.VC_RCV:
+                        phonemesArr.Add(
+                            new Phoneme {
+                                phoneme = $"{prevInitialConsonants}{currentVowel}",
+                            }
+                        );
+
+                        break;
+
+                    case TYPE_FLAG._VCV:
+
+                        phonemesArr.Add(
+                                new Phoneme {
+                                    phoneme = $"{prevSubsequentVowel} {currentConsonants}{currentVowel}",
+                                }
+                            );
+
+                        break;
+
+                    case TYPE_FLAG.CV:
+                        phonemesArr.Add(
+                                new Phoneme {
+                                    phoneme = $"{prevSubsequentVowel} {prevInitialConsonants}{currentVowel}",
+                                }
+                            );
+
+                        break;
+                }
+
+            } else {
+                // 앞글자 없음
+
+                initialConsonantLookup.TryGetValue(currentKoreanLyrics[0].ToString(), out var currentConsonants);
+                vowelLookup.TryGetValue(currentKoreanLyrics[1].ToString(), out var currentVowel);
+
+                phonemesArr.Add(
+                    new Phoneme {
+                        phoneme = $"- {currentConsonants}{currentVowel}",
+                    }
+                );
+            }
+
             if (nextLyric != null && nextLyric[0] >= '가' && nextLyric[0] <= '힣') {
-                nextKoreanLyrics = SeparateHangul(nextLyric != null ? nextLyric[0] : '\0');
-            }
+                // 뒷글자 있음
+                nextKoreanLyrics = SeparateHangul(nextLyric[0]);
 
-            ruleOfConsonantsLookup.TryGetValue(prevKoreanLyrics[2].ToString() + currentKoreanLyrics[0].ToString(), out var prevCCConsonants);
-            ruleOfConsonantsLookup.TryGetValue(currentKoreanLyrics[2].ToString() + nextKoreanLyrics[0].ToString(), out var nextCCConsonants);
+                TYPE_FLAG type = typeTable[lastConsonantsTable.IndexOf(currentKoreanLyrics[2]), initialConsonantsTable.IndexOf(nextKoreanLyrics[0])];
 
-            isPrevEndV = (prevKoreanLyrics[2] == '　' && prevKoreanLyrics[0] != '　') || (prevCCConsonants != null && prevCCConsonants[0] == '　');
-            var isCurrentEndV = (currentKoreanLyrics[2] == '　' && currentKoreanLyrics[0] != '　') || (nextCCConsonants != null && nextCCConsonants[0] == '　');
+                initialConsonantLookup.TryGetValue(nextKoreanLyrics[0].ToString(), out var nextConsonants);
+                vcLastConsonantsLookup.TryGetValue(nextKoreanLyrics[0].ToString(), out var nextVCCConsonants);
+                vrcLastConsonantsLookup.TryGetValue(nextKoreanLyrics[0].ToString(), out var nextVRCConsonants);
+                subsequentVowelLookup.TryGetValue(currentKoreanLyrics[1].ToString(), out var currentSubsequentVowel);
+                lastConsonantsLookup.TryGetValue(currentKoreanLyrics[2].ToString(), out var currentLastConsonants);
+                vcLastConsonantsLookup.TryGetValue(currentKoreanLyrics[2].ToString(), out var currentVCLastConsonants);
 
-            int totalDuration = notes.Sum(n => n.duration);
-            int vcLength = 60;
 
-            string CV = "";
-            vowelLookup.TryGetValue(currentKoreanLyrics[1].ToString(), out var currentVowel);
-            if (prevNeighbour != null) {
-                // 앞문자 존재
-                if (!isPrevEndV) {
-                    // 앞문자 종결이 C
-                    initialConsonantLookup.TryGetValue(prevCCConsonants == null ? currentKoreanLyrics[0].ToString() : prevCCConsonants[1].ToString(), out var changedCurrentConsonants);
-                    subsequentLastConsonantsLookup.TryGetValue(prevCCConsonants == null ? prevKoreanLyrics[3].ToString() : prevCCConsonants[0].ToString(), out var changedPrevConsonants);
-                    if (prevCCConsonants == null) {
-                        CV = $"- {changedCurrentConsonants}{currentVowel}";
-                    } else {
-                        if (CheckSpecialCC(changedCurrentConsonants)) {
-                            CV = $"{changedCurrentConsonants}{currentVowel}";
+                switch (type) {
+                    case TYPE_FLAG.VCC_CV:
+                        phonemesArr.Add(
+                                new Phoneme {
+                                    phoneme = $"{currentSubsequentVowel}{currentLastConsonants} {nextVCCConsonants}",
+                                    position = totalDuration - Math.Min(totalDuration / 3, 120)
+                                }
+                            );
+
+                        break;
+
+                    case TYPE_FLAG.VCC_CV_ADDED_Y:
+                        if (YVowelsTable.IndexOf(nextKoreanLyrics[1]) > 0) {
+                            phonemesArr.Add(
+                                new Phoneme {
+                                    phoneme = $"{currentSubsequentVowel}{currentVCLastConsonants} sy",
+                                    position = totalDuration - Math.Min(totalDuration / 3, 120)
+                                }
+                            );
                         } else {
-                            CV = $"{changedPrevConsonants} {changedCurrentConsonants}{currentVowel}";
+                            phonemesArr.Add(
+                                new Phoneme {
+                                    phoneme = $"{currentSubsequentVowel}{currentVCLastConsonants} s",
+                                    position = totalDuration - Math.Min(totalDuration / 3, 120)
+                                }
+                            );
                         }
-                            
-                    }
-                } else {
-                    // 앞문자 종결이 V
-                    subsequentVowelsLookup.TryGetValue(prevKoreanLyrics[1].ToString(), out var prevVowel);
-                    initialConsonantLookup.TryGetValue(prevCCConsonants == null ? currentKoreanLyrics[0].ToString() : prevCCConsonants[1].ToString(), out var currentInitialConsonants);
+                        
+                        break;
 
-                    if (CheckSpecialCC(currentInitialConsonants)) {
-                        CV = $"- {currentInitialConsonants}{currentVowel}";
-                    } else {
-                        CV = $"{prevVowel} {currentInitialConsonants}{currentVowel}";
-                    }
-                }
+                    case TYPE_FLAG.VC_CCV:
+                        phonemesArr.Add(
+                                new Phoneme {
+                                    phoneme = $"{currentSubsequentVowel} {currentVCLastConsonants}",
+                                    position = totalDuration - Math.Min(totalDuration / 3, 120)
+                                }
+                            );
+
+                        break;
+
+                    case TYPE_FLAG.VC_CCV_ADDED_Y:
+                        if (YVowelsTable.IndexOf(nextKoreanLyrics[1]) > 0) {
+                            phonemesArr.Add(
+                                new Phoneme {
+                                    phoneme = $"{currentSubsequentVowel} {nextConsonants}y",
+                                    position = totalDuration - Math.Min(totalDuration / 3, 120)
+                                }
+                            );
+                        } else {
+                            phonemesArr.Add(
+                                new Phoneme {
+                                    phoneme = $"{currentSubsequentVowel} {currentVCLastConsonants}",
+                                    position = totalDuration - Math.Min(totalDuration / 3, 120)
+                                }
+                            );
+                        }
+
+                        break;
+
+                    case TYPE_FLAG.VC_NCV:
+                        phonemesArr.Add(
+                            new Phoneme {
+                                phoneme = $"{currentSubsequentVowel} {currentVCLastConsonants}",
+                                position = totalDuration - Math.Min(totalDuration / 3, 120)
+                            }
+                        );
+
+                        break;
+
+                    case TYPE_FLAG.VC_NRCV:
+                        phonemesArr.Add(
+                            new Phoneme {
+                                phoneme = $"{currentSubsequentVowel} {currentVCLastConsonants}",
+                                position = totalDuration - Math.Min(totalDuration / 3, 120)
+                            }
+                        );
+
+                        break;
+
+                    case TYPE_FLAG.VRC_NCV:
+                        phonemesArr.Add(
+                            new Phoneme {
+                                phoneme = $"{currentSubsequentVowel} {currentLastConsonants}",
+                                position = totalDuration - Math.Min(totalDuration / 3, 120)
+                            }
+                        );
+
+                        break;
+
+                    case TYPE_FLAG.VC_CV:
+                        phonemesArr.Add(
+                            new Phoneme {
+                                phoneme = $"{currentSubsequentVowel} {currentVCLastConsonants}",
+                                position = totalDuration - Math.Min(totalDuration / 3, 120)
+                            }
+                        );
+
+                        break;
+
+                    case TYPE_FLAG.VRC_CV:
+                        phonemesArr.Add(
+                            new Phoneme {
+                                phoneme = $"{currentSubsequentVowel} {nextVRCConsonants}",
+                                position = totalDuration - Math.Min(totalDuration / 4, 100)
+                            }
+                        );
+
+                        break;
+
+                    case TYPE_FLAG.VC_CV_ADDED_Y:
+                        if (YVowelsTable.IndexOf(nextKoreanLyrics[1]) > 0) {
+                            phonemesArr.Add(
+                                new Phoneme {
+                                    phoneme = $"{currentSubsequentVowel} {nextVCCConsonants}y",
+                                    position = totalDuration - Math.Min(totalDuration / 3, 120)
+                                }
+                            );
+                        } else {
+                            phonemesArr.Add(
+                                new Phoneme {
+                                    phoneme = $"{currentSubsequentVowel} {nextVCCConsonants}",
+                                    position = totalDuration - Math.Min(totalDuration / 3, 120)
+                                }
+                            );
+                        }
+
+                        break;
+
+                    case TYPE_FLAG.VC_RCV:
+                        phonemesArr.Add(
+                            new Phoneme {
+                                phoneme = $"{currentSubsequentVowel} {currentVCLastConsonants}",
+                                position = totalDuration - Math.Min(totalDuration / 3, 120)
+                            }
+                        );
+
+                        break;
+
+                    case TYPE_FLAG.CV:
+
+                        break;
+                };
+
             } else {
-                // 앞문자 없음
-                initialConsonantLookup.TryGetValue(currentKoreanLyrics[0].ToString(), out var currentInitialConsonants);
+                // 뒷글자 없음
+                subsequentVowelLookup.TryGetValue(currentKoreanLyrics[1].ToString(), out var currentSubsequentVowel);
+                lastConsonantsLookup.TryGetValue(currentKoreanLyrics[2].ToString(), out var currentLastConsonants);
 
-                CV = $"- {currentInitialConsonants}{currentVowel}";
+                phonemesArr.Add(
+                    new Phoneme {
+                        phoneme = $"{currentSubsequentVowel} {currentLastConsonants}",
+                        position = totalDuration - 60
+                    }
+                );
+
             }
 
-            string VC = "";
-            subsequentVowelsLookup.TryGetValue(currentKoreanLyrics[1].ToString(), out var currentsubVowel);
-            lastConsonantsLookup.TryGetValue(nextCCConsonants == null ? currentKoreanLyrics[2].ToString() : nextCCConsonants[0].ToString(), out var changedNextConsonants);
-            if (!isCurrentEndV) {
-                lastConsonantsLookup.TryGetValue(nextCCConsonants == null ? nextKoreanLyrics[0].ToString() : nextCCConsonants[1].ToString(), out var nextInitialConsonants);
-
-                if (currentLyric.Length == 2) {
-                    if (nextLyric == null) {
-                        VC = $"{currentsubVowel}{changedNextConsonants} {currentLyric[1]}";
-                    } else {
-                        VC = $"{currentsubVowel}{changedNextConsonants} {currentLyric[1]}";
-                    }
-                } else {
-                    if (CheckSpecialCC(nextInitialConsonants) || nextInitialConsonants == null) {
-                        if (CheckSpecialCC(changedNextConsonants) || nextInitialConsonants == null) {
-                            VC = $"{currentsubVowel} {changedNextConsonants}";
-                        } else {
-                            VC = $"{currentsubVowel}{changedNextConsonants} {nextInitialConsonants}";
-                        }
-                    } else {
-                        VC = $"{currentsubVowel} {changedNextConsonants}";
-                    }
-                }
-                
-            } else {
-                initialConsonantLookup.TryGetValue(nextCCConsonants == null ? nextKoreanLyrics[0].ToString() : nextCCConsonants[1].ToString(), out var nextInitialConsonants);
-
-                if (nextInitialConsonants == null || nextInitialConsonants == "") {
-                    if (currentLyric.Length == 2) {
-                        VC = $"{currentsubVowel} {currentLyric[1]}";
-                    }
-                } else {
-                    if (!CheckMakeVowelCC(nextInitialConsonants)) {
-                        if (CheckSpecialCC(nextInitialConsonants)) {
-                            VC = $"{currentsubVowel} -";
-                        } else {
-                            VC = $"{currentsubVowel} {nextInitialConsonants}";
-                        }
-                    }
-                }
-            }
-
-            string suffix = "";
-            if (currentLyric.Length == 2) {
-                suffix = $"{currentVowel} {currentLyric[1]}";
-            }
-
-
-            if (VC == "") {
-                if (suffix == "") {
-                    return new Result {
-                        phonemes = new Phoneme[] {
-                            new Phoneme {
-                                phoneme = CV,
-                            },
-                        }
-                    };
-                } else {
-                    return new Result {
-                        phonemes = new Phoneme[] {
-                            new Phoneme {
-                                phoneme = CV,
-                            },
-                            new Phoneme {
-                                phoneme = suffix,
-                                position = totalDuration - vcLength,
-                            },
-                        }
-                    };
-                }
-            }
+            // 여기서 phonemes 바꿔줘야함
+            Phoneme[] phonemes = phonemesArr.ToArray();
 
             return new Result {
-                phonemes = new Phoneme[] {
-                    new Phoneme {
-                        phoneme = CV,
-                    },
-                    new Phoneme {
-                        phoneme = VC,
-                        position = totalDuration - vcLength,
-                    },
-                }
+                phonemes = phonemes
             };
         }
 

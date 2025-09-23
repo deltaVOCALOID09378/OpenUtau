@@ -1,6 +1,8 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Xml;
+using System.Collections.Generic;
 
 using OpenUtau.Core.Ustx;
 
@@ -33,9 +35,8 @@ namespace OpenUtau.Core.Format {
             Ustx.AddDefaultExpressions(uproject);
             uproject.RegisterExpression(new UExpressionDescriptor("opening", "ope", 0, 100, 100));
 
-            string bpmPath = $"{nsPrefix}masterTrack/{nsPrefix}tempo/{nsPrefix}{(nsPrefix == "v3:" ? "bpm" : "v")}";
-            string beatperbarPath = $"{nsPrefix}masterTrack/{nsPrefix}timeSig/{nsPrefix}{(nsPrefix == "v3:" ? "nume" : "nu")}";
-            string beatunitPath = $"{nsPrefix}masterTrack/{nsPrefix}timeSig/{nsPrefix}{(nsPrefix == "v3:" ? "denomi" : "de")}";
+            string bpmPath = $"{nsPrefix}masterTrack/{nsPrefix}tempo";
+            string timeSigPath = $"{nsPrefix}masterTrack/{nsPrefix}timeSig";
             string premeasurePath = $"{nsPrefix}masterTrack/{nsPrefix}preMeasure";
             string resolutionPath = $"{nsPrefix}masterTrack/{nsPrefix}resolution";
             string projectnamePath = $"{nsPrefix}masterTrack/{nsPrefix}seqName";
@@ -58,22 +59,40 @@ namespace OpenUtau.Core.Format {
             string partstyleattrPath = $"{nsPrefix}{(nsPrefix == "v3:" ? "partStyle" : "pStyle")}/{nsPrefix}{(nsPrefix == "v3:" ? "attr" : "v")}";
             string notestyleattrPath = $"{nsPrefix}{(nsPrefix == "v3:" ? "noteStyle" : "nStyle")}/{nsPrefix}{(nsPrefix == "v3:" ? "attr" : "v")}";
 
-            uproject.bpm = Convert.ToDouble(root.SelectSingleNode(bpmPath, nsmanager).InnerText) / 100;
-            uproject.beatPerBar = int.Parse(root.SelectSingleNode(beatperbarPath, nsmanager).InnerText);
-            uproject.beatUnit = int.Parse(root.SelectSingleNode(beatunitPath, nsmanager).InnerText);
+            uproject.timeSignatures.Clear();
+            foreach (XmlNode node in root.SelectNodes(timeSigPath, nsmanager)) {
+                uproject.timeSignatures.Add(new UTimeSignature {
+                    barPosition = Convert.ToInt32(node[nsPrefix == "v3:" ? "posMes" : "m"].InnerText),
+                    beatPerBar = Convert.ToInt32(node[nsPrefix == "v3:" ? "nume" : "nu"].InnerText),
+                    beatUnit = Convert.ToInt32(node[nsPrefix == "v3:" ? "denomi" : "de"].InnerText),
+                });
+            }
+            uproject.timeSignatures.Sort((lhs, rhs) => lhs.barPosition.CompareTo(rhs.barPosition));
+            uproject.timeSignatures[0].barPosition = 0;
+
+            uproject.tempos.Clear();
+            foreach (XmlNode node in root.SelectNodes(bpmPath, nsmanager)) {
+                uproject.tempos.Add(new UTempo {
+                    position = Convert.ToInt32(node[nsPrefix == "v3:" ? "posTick" : "t"].InnerText),
+                    bpm = Convert.ToDouble(node[nsPrefix == "v3:" ? "bpm" : "v"].InnerText) / 100,
+                });
+            }
+            uproject.tempos.Sort((lhs, rhs) => lhs.position.CompareTo(rhs.position));
+            uproject.tempos[0].position = 0;
+
             uproject.resolution = int.Parse(root.SelectSingleNode(resolutionPath, nsmanager).InnerText);
             uproject.FilePath = file;
             uproject.name = root.SelectSingleNode(projectnamePath, nsmanager).InnerText;
             uproject.comment = root.SelectSingleNode(projectcommentPath, nsmanager).InnerText;
 
             int preMeasure = int.Parse(root.SelectSingleNode(premeasurePath, nsmanager).InnerText);
-            int partPosTickShift = -preMeasure * uproject.resolution * uproject.beatPerBar * 4 / uproject.beatUnit;
+            int partPosTickShift = -preMeasure * uproject.resolution * uproject.timeSignatures[0].beatPerBar * 4 / uproject.timeSignatures[0].beatUnit;
 
             USinger usinger = USinger.CreateMissing("");
 
             foreach (XmlNode track in root.SelectNodes(trackPath, nsmanager)) // track
             {
-                UTrack utrack = new UTrack() { Singer = usinger, TrackNo = uproject.tracks.Count };
+                UTrack utrack = new UTrack(uproject) { Singer = usinger, TrackNo = uproject.tracks.Count };
                 uproject.tracks.Add(utrack);
 
                 //utrack.Name = track.SelectSingleNode(tracknamePath, nsmanager).InnerText;
@@ -90,6 +109,67 @@ namespace OpenUtau.Core.Format {
                     upart.position = int.Parse(part.SelectSingleNode(postickPath, nsmanager).InnerText) + partPosTickShift;
                     upart.Duration = int.Parse(part.SelectSingleNode(playtimePath, nsmanager).InnerText);
                     upart.trackNo = utrack.TrackNo;
+
+                    var pitList = new List<Tuple<int, int>>();
+                    var pbsList = new List<Tuple<int, int>>();
+                    int? lastT = null;
+                    int? lastV = null;
+                    foreach (XmlNode ctrlPt in part.SelectNodes($"{nsPrefix}{(nsPrefix == "v3:" ? "mCtrl" : "cc")}", nsmanager)) {
+                        var t = int.Parse(ctrlPt.SelectSingleNode($"{nsPrefix}{(nsPrefix == "v3:" ? "posTick" : "t")}", nsmanager).InnerText);
+                        var valNode = ctrlPt.SelectSingleNode($"{nsPrefix}{(nsPrefix == "v3:" ? "attr" : "v")}", nsmanager);
+                        // type of controller
+                        // D: DYN, [0,128), default: 64
+                        // S: PBS, [0,24], default: 2.
+                        // P: PIT, [-8192,8192), default: 0
+                        // Pitch curve is calculated by multiplying PIT with PBS, max/min PIT shifts pitch by {PBS} semitones.
+                        var type = valNode.Attributes["id"].Value;
+                        var v = int.Parse(valNode.InnerText);
+                        if (type == "DYN" || type == "D") {
+                            v -= 64;
+                            v = (int)(v < 0 ? v / 64.0 * 240 : v / 63.0 * 120);
+                            var curve = GetCurve(uproject, upart, Ustx.DYN);
+                            curve.Set(t, v, lastT ?? t, lastV ?? 0);
+                            lastT = t;
+                            lastV = v;
+                        } else if (type == "PBS" || type == "S") {
+                            pbsList.Add(new Tuple<int, int>(t, v));
+                        } else if (type == "PIT" || type == "P") {
+                            pitList.Add(new Tuple<int, int>(t, v));
+                        }
+                    }
+                    if (lastV.HasValue) {
+                        GetCurve(uproject, upart, Ustx.DYN).Set(upart.Duration, lastV ?? 0, lastT ?? 0, 0);
+                    }
+
+                    // Make sure that points are ordered by time
+                    const int pbsDefaultVal = 2;
+                    pbsList.Sort((tuple1, tuple2) => tuple1.Item1.CompareTo(tuple2.Item1));
+                    pitList.Sort((tuple1, tuple2) => tuple1.Item1.CompareTo(tuple2.Item1));
+
+                    lastT = null;
+                    lastV = null;
+                    foreach (var pt in pitList) {
+                        var t = pt.Item1;
+                        var v = pt.Item2 < 0 ? pt.Item2 / 8192f : pt.Item2 / 8191f;
+                        var semitone = pbsList.FindLast(tuple => tuple.Item1 <= t)?.Item2 ?? pbsDefaultVal;
+                        var pit = (int)Math.Round(v * semitone * 100);
+                        if (Math.Abs(pit) > 1200) {
+                            // Exceed OpenUTAU's limit. clip value
+                            pit = Math.Sign(pit) * 1200;
+                        }
+                        if (t > 0 && lastV.HasValue) {
+                            // Mimic Vsqx's Hold property
+                            GetCurve(uproject, upart, Ustx.PITD).Set(t - UCurve.interval, lastV.Value, lastT ?? t, 0);
+                            GetCurve(uproject, upart, Ustx.PITD).Set(t, pit, t - UCurve.interval, 0);
+                        } else {
+                            GetCurve(uproject, upart, Ustx.PITD).Set(t, pit, lastT ?? t, 0);
+                        }
+                        lastT = t;
+                        lastV = pit;
+                    }
+                    if (lastV.HasValue) {
+                        GetCurve(uproject, upart, Ustx.PITD).Set(upart.Duration, lastV ?? 0, lastT ?? 0, 0);
+                    }
 
                     foreach (XmlNode note in part.SelectNodes(notePath, nsmanager)) {
                         UNote unote = uproject.CreateNote();
@@ -121,8 +201,10 @@ namespace OpenUtau.Core.Format {
                             }
                         }
 
-                        unote.pitch.data[0].X = -(float)uproject.TickToMillisecond(Math.Min(15, unote.duration / 3));
-                        unote.pitch.data[1].X = -unote.pitch.data[0].X;
+                        int start = Util.NotePresets.Default.DefaultPortamento.PortamentoStart;
+                        int length = Util.NotePresets.Default.DefaultPortamento.PortamentoLength;
+                        unote.pitch.data[0].X = start;
+                        unote.pitch.data[1].X = start + length;
                         upart.notes.Add(unote);
                     }
                 }
@@ -131,6 +213,17 @@ namespace OpenUtau.Core.Format {
             uproject.AfterLoad();
             uproject.ValidateFull();
             return uproject;
+        }
+
+        private static UCurve GetCurve(UProject uproject, UVoicePart upart, string abbr) {
+            var curve = upart.curves.Find(c => c.abbr == abbr);
+            if (curve == null) {
+                if (uproject.expressions.TryGetValue(abbr, out var desc)) {
+                    curve = new UCurve(desc);
+                    upart.curves.Add(curve);
+                }
+            }
+            return curve;
         }
     }
 }

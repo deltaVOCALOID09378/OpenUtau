@@ -2,7 +2,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using OpenUtau.App.ViewModels;
 using OpenUtau.Core;
@@ -18,12 +17,8 @@ namespace OpenUtau.App.Controls {
         public LyricBox() {
             InitializeComponent();
             DataContext = viewModel = new LyricBoxViewModel();
-            box = this.FindControl<TextBox>("PART_Box");
-            listBox = this.FindControl<ListBox>("PART_Suggestions");
-        }
-
-        private void InitializeComponent() {
-            AvaloniaXamlLoader.Load(this);
+            box = PART_Box;
+            listBox = PART_Suggestions;
             IsVisible = false;
         }
 
@@ -32,6 +27,7 @@ namespace OpenUtau.App.Controls {
         }
 
         private void Box_LostFocus(object? sender, RoutedEventArgs e) {
+            box.CaretIndex = 0;
         }
 
         private void ListBox_KeyDown(object? sender, KeyEventArgs e) {
@@ -118,6 +114,14 @@ namespace OpenUtau.App.Controls {
                     listBox.SelectedIndex = 0;
                     e.Handled = true;
                     break;
+                case Key.Left:
+                    if (box.SelectionStart < box.SelectionEnd)
+                        box.SelectionEnd = box.SelectionStart;
+                    break;
+                case Key.Right:
+                    if (box.SelectionStart > box.SelectionEnd)
+                        box.SelectionEnd = box.SelectionStart;
+                    break;
                 default:
                     break;
             }
@@ -140,8 +144,8 @@ namespace OpenUtau.App.Controls {
         }
 
         public void ListBox_PointerPressed(object sender, PointerPressedEventArgs args) {
-            if (sender is Grid grid &&
-                grid.DataContext is LyricBoxViewModel.SuggestionItem item) {
+            if (sender is DockPanel panel &&
+                panel.DataContext is LyricBoxViewModel.SuggestionItem item) {
                 box.Text = item.Alias;
             }
             EndEdit(true);
@@ -177,7 +181,7 @@ namespace OpenUtau.App.Controls {
             viewModel.NoteOrPhoneme = null;
             viewModel.IsVisible = false;
             viewModel.Text = string.Empty;
-            KeyboardDevice.Instance.SetFocusedElement(null, NavigationMethod.Unspecified, KeyModifiers.None);
+            TopLevel.GetTopLevel(this)?.FocusManager?.ClearFocus();
         }
     }
 }

@@ -38,7 +38,7 @@ pitch:
   - {x: -5, y: 0, shape: io}
   - {x: 5, y: 0, shape: io}
   snap_first: true
-vibrato: {length: 0, period: 175, depth: 25, in: 10, out: 10, shift: 0, drift: 0}
+vibrato: {length: 0, period: 175, depth: 25, in: 10, out: 10, shift: 0, drift: 0, vol_link: 0}
 phoneme_expressions:
 - {index: 0, abbr: vel, value: 123}
 phoneme_overrides: []
@@ -61,6 +61,33 @@ phoneme_overrides: []
             Assert.NotNull(vel);
             Assert.Null(vel.descriptor);
             Assert.Equal(123, vel.value);
+        }
+
+        [Fact]
+        public void SpecialLyric() {
+            var yaml = Yaml.DefaultSerializer.Serialize(new UNote() { lyric = "-@" });
+            var actual = Yaml.DefaultDeserializer.Deserialize<UNote>(yaml);
+            Assert.Equal("-@", actual.lyric);
+
+            yaml = Yaml.DefaultSerializer.Serialize(new UNote() { lyric = "-&" });
+            actual = Yaml.DefaultDeserializer.Deserialize<UNote>(yaml);
+            Assert.Equal("-&", actual.lyric);
+
+            yaml = Yaml.DefaultSerializer.Serialize(new UNote() { lyric = "null" });
+            actual = Yaml.DefaultDeserializer.Deserialize<UNote>(yaml);
+            Assert.Equal("null", actual.lyric);
+
+            yaml = Yaml.DefaultSerializer.Serialize(new UNote() { lyric = "true" });
+            actual = Yaml.DefaultDeserializer.Deserialize<UNote>(yaml);
+            Assert.Equal("true", actual.lyric);
+
+            yaml = Yaml.DefaultSerializer.Serialize(new UNote() { lyric = "-," });
+            actual = Yaml.DefaultDeserializer.Deserialize<UNote>(yaml);
+            Assert.Equal("-,", actual.lyric);
+
+            yaml = Yaml.DefaultSerializer.Serialize(new UNote() { lyric = "\t- asdf" });
+            actual = Yaml.DefaultDeserializer.Deserialize<UNote>(yaml);
+            Assert.Equal("\t- asdf", actual.lyric);
         }
     }
 }

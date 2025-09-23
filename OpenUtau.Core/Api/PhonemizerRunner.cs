@@ -10,14 +10,13 @@ using Serilog;
 
 namespace OpenUtau.Api {
     internal class PhonemizerRequest {
+        public USinger singer;
         public UVoicePart part;
         public long timestamp;
         public int[] noteIndexes;
         public Phonemizer.Note[][] notes;
         public Phonemizer phonemizer;
-        public double bpm;
-        public int beatUnit;
-        public int resolution;
+        public TimeAxis timeAxis;
     }
 
     internal class PhonemizerResponse {
@@ -31,6 +30,7 @@ namespace OpenUtau.Api {
         private readonly TaskScheduler mainScheduler;
         private readonly CancellationTokenSource shutdown = new CancellationTokenSource();
         private readonly BlockingCollection<PhonemizerRequest> requests = new BlockingCollection<PhonemizerRequest>();
+        private readonly object busyLock = new object();
         private Thread thread;
 
         public PhonemizerRunner(TaskScheduler mainScheduler) {
@@ -50,22 +50,24 @@ namespace OpenUtau.Api {
             var parts = new HashSet<UVoicePart>();
             var toRun = new List<PhonemizerRequest>();
             while (!shutdown.IsCancellationRequested) {
-                while (requests.TryTake(out var request)) {
-                    toRun.Add(request);
-                }
-                foreach (var request in toRun) {
-                    parts.Add(request.part);
-                }
-                for (int i = toRun.Count - 1; i >= 0; i--) {
-                    if (parts.Remove(toRun[i].part)) {
-                        SendResponse(Phonemize(toRun[i]));
+                lock (busyLock) {
+                    while (requests.TryTake(out var request)) {
+                        toRun.Add(request);
                     }
+                    foreach (var request in toRun) {
+                        parts.Add(request.part);
+                    }
+                    for (int i = toRun.Count - 1; i >= 0; i--) {
+                        if (parts.Remove(toRun[i].part)) {
+                            SendResponse(Phonemize(toRun[i]));
+                        }
+                    }
+                    parts.Clear();
+                    toRun.Clear();
+                    try {
+                        toRun.Add(requests.Take(shutdown.Token));
+                    } catch (OperationCanceledException) { }
                 }
-                parts.Clear();
-                toRun.Clear();
-                try {
-                    toRun.Add(requests.Take(shutdown.Token));
-                } catch (OperationCanceledException) { }
             }
         }
 
@@ -75,6 +77,7 @@ namespace OpenUtau.Api {
                     response.part.SetPhonemizerResponse(response);
                 }
                 DocManager.Inst.Project.Validate(new ValidateOptions {
+                    SkipTiming = true,
                     Part = response.part,
                     SkipPhonemizer = true,
                 });
@@ -85,9 +88,18 @@ namespace OpenUtau.Api {
         static PhonemizerResponse Phonemize(PhonemizerRequest request) {
             var notes = request.notes;
             var phonemizer = request.phonemizer;
-            phonemizer.SetTiming(request.bpm, request.beatUnit, request.resolution);
+            if (request.singer == null) {
+                return new PhonemizerResponse() {
+                    noteIndexes = request.noteIndexes,
+                    part = request.part,
+                    phonemes = new Phonemizer.Phoneme[][] { },
+                    timestamp = request.timestamp,
+                };
+            }
+            phonemizer.SetSinger(request.singer);
+            phonemizer.SetTiming(request.timeAxis);
             try {
-                phonemizer.SetUp(notes);
+                phonemizer.SetUp(notes, DocManager.Inst.Project, DocManager.Inst.Project.tracks[request.part.trackNo]);
             } catch (Exception e) {
                 Log.Error(e, $"phonemizer failed to setup.");
             }
@@ -135,6 +147,14 @@ namespace OpenUtau.Api {
                         }
                     };
                 }
+                if (phonemizer.LegacyMapping) {
+                    for (var k = 0; k < phonemizerResult.phonemes.Length; k++) {
+                        var phoneme = phonemizerResult.phonemes[k];
+                        if (request.singer.TryGetMappedOto(phoneme.phoneme, notes[i][0].tone, out var oto)) {
+                            phonemizerResult.phonemes[k].phoneme = oto.Alias;
+                        }
+                    }
+                }
                 for (var j = 0; j < phonemizerResult.phonemes.Length; j++) {
                     phonemizerResult.phonemes[j].position += notes[i][0].position;
                 }
@@ -151,6 +171,20 @@ namespace OpenUtau.Api {
                 phonemes = result.ToArray(),
                 timestamp = request.timestamp,
             };
+        }
+
+        /// <summary>
+        /// Wait already queued phonemizer requests to finish.
+        /// Should only be used in command line mode.
+        /// </summary>
+        public void WaitFinish() {
+            while (true) {
+                lock (busyLock) {
+                    if (requests.Count == 0) {
+                        return;
+                    }
+                }
+            }
         }
 
         public void Dispose() {

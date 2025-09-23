@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-
 using OpenUtau.Core.Ustx;
 using OpenUtau.Core.Util;
 
@@ -12,6 +11,7 @@ namespace OpenUtau.Core {
         public string Key;
         public override ValidateOptions ValidateOptions
             => new ValidateOptions {
+                SkipTiming = true,
                 Part = Part,
                 SkipPhonemizer = true,
             };
@@ -20,51 +20,107 @@ namespace OpenUtau.Core {
         }
     }
 
-    /*
     public class SetNoteExpressionCommand : ExpCommand {
+        static readonly HashSet<string> needsPhonemizer = new HashSet<string> {
+            Format.Ustx.ALT, Format.Ustx.CLR, Format.Ustx.SHFT, Format.Ustx.VEL
+        };
+
         public readonly UProject project;
-        public readonly UPhoneme phoneme;
-        public readonly float newValue;
-        public readonly float oldValue;
-        public SetNoteExpressionCommand(UProject project, UNote note, string abbr, float value) {
+        public readonly UTrack track;
+        public readonly float?[] newValue;
+        public readonly float?[] oldValue;
+        public override ValidateOptions ValidateOptions
+            => new ValidateOptions {
+                SkipTiming = true,
+                Part = Part,
+                SkipPhonemizer = !needsPhonemizer.Contains(Key),
+            };
+        public SetNoteExpressionCommand(UProject project, UTrack track, UVoicePart part, UNote note, string abbr, float?[] values) : base(part) {
             this.project = project;
+            this.track = track;
             this.Note = note;
             Key = abbr;
-            newValue = value;
-            oldValue = phoneme.GetExpression(project, abbr).Item1;
+            newValue = values;
+            oldValue = note.GetExpressionNoteHas(project, track, abbr);
         }
         public override string ToString() => $"Set note expression {Key}";
-        public override void Execute() => Note.SetExpression(project, Key, newValue);
-        public override void Unexecute() => Note.SetExpression(project, Key, oldValue);
+        public override void Execute() => Note.SetExpression(project, track, Key, newValue);
+        public override void Unexecute() => Note.SetExpression(project, track, Key, oldValue);
     }
-    */
+
+    public class SetNotesSameExpressionCommand : ExpCommand {
+        static readonly HashSet<string> needsPhonemizer = new HashSet<string> {
+            Format.Ustx.ALT, Format.Ustx.CLR, Format.Ustx.SHFT, Format.Ustx.VEL
+        };
+
+        public readonly UProject project;
+        public readonly UTrack track;
+        public readonly UNote[] notes;
+        public readonly float? newValue;
+        public readonly float?[][] oldValue;
+        public override ValidateOptions ValidateOptions
+            => new ValidateOptions {
+                SkipTiming = true,
+                Part = Part,
+                SkipPhonemizer = !needsPhonemizer.Contains(Key),
+            };
+        public SetNotesSameExpressionCommand(UProject project, UTrack track, UVoicePart part, IEnumerable<UNote> notes, string abbr, float? value) : base(part) {
+            this.project = project;
+            this.track = track;
+            Key = abbr;
+            this.notes = notes.ToArray();
+            newValue = value;
+            oldValue = notes.Select(note => note.GetExpressionNoteHas(project, track, abbr)).ToArray();
+        }
+        public override string ToString() => $"Set note expression {Key}";
+        public override void Execute() {
+            for (var i = 0; i < notes.Length; i++) {
+                notes[i].SetExpression(project, track, Key, new float?[] { newValue });
+            }
+        }
+        public override void Unexecute() {
+            for (var i = 0; i < notes.Length; i++) {
+                notes[i].SetExpression(project, track, Key, oldValue[i]);
+            }
+        }
+    }
 
     public class SetPhonemeExpressionCommand : ExpCommand {
         static readonly HashSet<string> needsPhonemizer = new HashSet<string> {
-            Format.Ustx.ALT, Format.Ustx.CLR, Format.Ustx.SHFT,
+            Format.Ustx.ALT, Format.Ustx.CLR, Format.Ustx.SHFT, Format.Ustx.VEL
         };
 
         public readonly UProject project;
         public readonly UTrack track;
         public readonly UPhoneme phoneme;
-        public readonly float newValue;
-        public readonly float oldValue;
+        public readonly float? newValue;
+        public readonly float? oldValue;
         public override ValidateOptions ValidateOptions
             => new ValidateOptions {
+                SkipTiming = true,
                 Part = Part,
                 SkipPhonemizer = !needsPhonemizer.Contains(Key),
             };
-        public SetPhonemeExpressionCommand(UProject project, UTrack track, UVoicePart part, UPhoneme phoneme, string abbr, float value) : base(part) {
+        public SetPhonemeExpressionCommand(UProject project, UTrack track, UVoicePart part, UPhoneme phoneme, string abbr, float? value) : base(part) {
             this.project = project;
             this.track = track;
             this.phoneme = phoneme;
             Key = abbr;
             newValue = value;
-            oldValue = phoneme.GetExpression(project, track, abbr).Item1;
+            var oldExp = phoneme.GetExpression(project, track, abbr);
+            if (oldExp.Item2) {
+                oldValue = oldExp.Item1;
+            } else {
+                oldValue = null;
+            }
         }
         public override string ToString() => $"Set phoneme expression {Key}";
-        public override void Execute() => phoneme.SetExpression(project, track, Key, newValue);
-        public override void Unexecute() => phoneme.SetExpression(project, track, Key, oldValue);
+        public override void Execute() {
+            phoneme.SetExpression(project, track, Key, newValue);
+        }
+        public override void Unexecute() {
+            phoneme.SetExpression(project, track, Key, oldValue);
+        }
     }
 
     public class ResetExpressionsCommand : ExpCommand {
@@ -85,6 +141,7 @@ namespace OpenUtau.Core {
     public abstract class PitchExpCommand : ExpCommand {
         public PitchExpCommand(UVoicePart part) : base(part) { }
         public override ValidateOptions ValidateOptions => new ValidateOptions {
+            SkipTiming = true,
             Part = Part,
             SkipPhonemizer = true,
             SkipPhoneme = true,
@@ -186,6 +243,38 @@ namespace OpenUtau.Core {
         public override void Unexecute() => Note.pitch = oldPitch;
     }
 
+    public class SetPitchPointsCommand : PitchExpCommand {
+        UPitch[] oldPitch;
+        UNote[] Notes;
+        UPitch newPitch;
+        public SetPitchPointsCommand(UVoicePart part, UNote note, UPitch pitch) : base(part) {
+            Notes = new UNote[] { note };
+            oldPitch = Notes.Select(note => note.pitch).ToArray();
+            newPitch = pitch;
+        }
+
+        public SetPitchPointsCommand(UVoicePart part, IEnumerable<UNote> notes, UPitch pitch) : base(part) {
+            Notes = notes.ToArray();
+            oldPitch = Notes.Select(note => note.pitch).ToArray();
+            newPitch = pitch;
+        }
+        public override string ToString() => "Set pitch points";
+        public override void Execute(){
+            lock (Part) {
+                for (var i=0; i<Notes.Length; i++) {
+                    Notes[i].pitch = newPitch.Clone();
+                }
+            }
+        }
+        public override void Unexecute() {
+            lock (Part) {
+                for (var i = 0; i < Notes.Length; i++) {
+                    Notes[i].pitch = oldPitch[i];
+                }
+            }
+        }
+    }
+
     public class SetCurveCommand : ExpCommand {
         readonly UProject project;
         readonly string abbr;
@@ -197,6 +286,7 @@ namespace OpenUtau.Core {
         int[] oldYs;
         public override ValidateOptions ValidateOptions
             => new ValidateOptions {
+                SkipTiming = true,
                 Part = Part,
                 SkipPhonemizer = true,
                 SkipPhoneme = true,
@@ -237,7 +327,9 @@ namespace OpenUtau.Core {
                 curve.ys.AddRange(oldYs);
             }
         }
-        public override bool Mergeable => true;
+        public override bool CanMerge(IList<UCommand> commands) {
+            return commands.All(c => c is SetCurveCommand);
+        }
         public override UCommand Merge(IList<UCommand> commands) {
             var first = commands.First() as SetCurveCommand;
             var last = commands.Last() as SetCurveCommand;
@@ -258,14 +350,16 @@ namespace OpenUtau.Core {
         readonly int[] oldYs;
         readonly int[] newXs;
         readonly int[] newYs;
+        readonly bool setReal;
         public MergedSetCurveCommand(UProject project, UVoicePart part,
-            string abbr, int[] oldXs, int[] oldYs, int[] newXs, int[] newYs) : base(part) {
+            string abbr, int[] oldXs, int[] oldYs, int[] newXs, int[] newYs, bool setReal = false) : base(part) {
             this.project = project;
             this.abbr = abbr;
             this.oldXs = oldXs;
             this.oldYs = oldYs;
             this.newXs = newXs;
             this.newYs = newYs;
+            this.setReal = setReal;
         }
         public override string ToString() => "Edit Curve";
         public override void Execute() {
@@ -274,11 +368,11 @@ namespace OpenUtau.Core {
                 curve = new UCurve(descriptor);
                 Part.curves.Add(curve);
             }
-            curve.xs.Clear();
-            curve.ys.Clear();
+            GetCurveXs(curve)?.Clear();
+            GetCurveYs(curve)?.Clear();
             if (newXs != null && newYs != null) {
-                curve.xs.AddRange(newXs);
-                curve.ys.AddRange(newYs);
+                GetCurveXs(curve)?.AddRange(newXs);
+                GetCurveYs(curve)?.AddRange(newYs);
             }
         }
         public override void Unexecute() {
@@ -287,12 +381,18 @@ namespace OpenUtau.Core {
                 curve = new UCurve(descriptor);
                 Part.curves.Add(curve);
             }
-            curve.xs.Clear();
-            curve.ys.Clear();
+            GetCurveXs(curve)?.Clear();
+            GetCurveYs(curve)?.Clear();
             if (oldXs != null && oldYs != null) {
-                curve.xs.AddRange(oldXs);
-                curve.ys.AddRange(oldYs);
+                GetCurveXs(curve)?.AddRange(oldXs);
+                GetCurveYs(curve)?.AddRange(oldYs);
             }
+        }
+        private List<int>? GetCurveXs(UCurve? curve) {
+            return setReal ? curve?.realXs : curve?.xs;
+        }
+        private List<int>? GetCurveYs(UCurve? curve) {
+            return setReal ? curve?.realYs : curve?.ys;
         }
     }
 

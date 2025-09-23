@@ -16,10 +16,12 @@ namespace OpenUtau.Api {
 
         TrieNode root;
         Dictionary<string, bool> phonemeSymbols; // (phoneme, isVowel)
+        HashSet<string> glideSymbols;
 
-        G2pDictionary(TrieNode root, Dictionary<string, bool> phonemeSymbols) {
+        G2pDictionary(TrieNode root, Dictionary<string, bool> phonemeSymbols, HashSet<string> glideSymbols) {
             this.root = root;
             this.phonemeSymbols = phonemeSymbols;
+            this.glideSymbols = glideSymbols;
         }
 
         public bool IsValidSymbol(string symbol) {
@@ -28,6 +30,10 @@ namespace OpenUtau.Api {
 
         public bool IsVowel(string symbol) {
             return phonemeSymbols.TryGetValue(symbol, out var isVowel) && isVowel;
+        }
+
+        public bool IsGlide(string symbol) {
+            return glideSymbols.Contains(symbol);
         }
 
         public string[] Query(string grapheme) {
@@ -56,10 +62,12 @@ namespace OpenUtau.Api {
         public class Builder {
             TrieNode root;
             Dictionary<string, bool> phonemeSymbols; // (phoneme, isVowel)
+            HashSet<string> glideSymbols;
 
             internal Builder() {
                 root = new TrieNode();
                 phonemeSymbols = new Dictionary<string, bool>();
+                glideSymbols = new HashSet<string>();
             }
 
             /// <summary>
@@ -67,10 +75,24 @@ namespace OpenUtau.Api {
             /// </summary>
             public Builder AddSymbol(string symbol, string type) {
                 phonemeSymbols[symbol] = type == "vowel";
+                if(type == "semivowel" || type == "liquid") {
+                    glideSymbols.Add(symbol);
+                } else {
+                    glideSymbols.Remove(symbol);
+                }
                 return this;
             }
             public Builder AddSymbol(string symbol, bool isVowel) {
                 phonemeSymbols[symbol] = isVowel;
+                return this;
+            }
+            public Builder AddSymbol(string symbol, bool isVowel, bool isGlide) {
+                phonemeSymbols[symbol] = isVowel;
+                if (isGlide && !isVowel) {
+                    glideSymbols.Add(symbol);
+                } else {
+                    glideSymbols.Remove(symbol);
+                }
                 return this;
             }
 
@@ -98,6 +120,15 @@ namespace OpenUtau.Api {
 
             public Builder Load(string input) {
                 var data = Core.Yaml.DefaultDeserializer.Deserialize<G2pDictionaryData>(input);
+                return Load(data);
+            }
+
+            public Builder Load(TextReader textReader) {
+                var data = Core.Yaml.DefaultDeserializer.Deserialize<G2pDictionaryData>(textReader);
+                return Load(data);
+            }
+
+            public Builder Load(G2pDictionaryData data){
                 if (data.symbols != null) {
                     foreach (var symbolData in data.symbols) {
                         AddSymbol(symbolData.symbol, symbolData.type);
@@ -111,19 +142,8 @@ namespace OpenUtau.Api {
                 return this;
             }
 
-            public Builder Load(TextReader textReader) {
-                var data = Core.Yaml.DefaultDeserializer.Deserialize<G2pDictionaryData>(textReader);
-                foreach (var symbolData in data.symbols) {
-                    AddSymbol(symbolData.symbol, symbolData.type);
-                }
-                foreach (var entry in data.entries) {
-                    AddEntry(entry.grapheme, entry.phonemes);
-                }
-                return this;
-            }
-
             public G2pDictionary Build() {
-                return new G2pDictionary(root, phonemeSymbols);
+                return new G2pDictionary(root, phonemeSymbols, glideSymbols);
             }
         }
 

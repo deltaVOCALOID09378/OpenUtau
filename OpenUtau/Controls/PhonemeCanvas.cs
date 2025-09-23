@@ -3,12 +3,19 @@ using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Media.TextFormatting;
 using OpenUtau.App.ViewModels;
+using OpenUtau.Core;
 using OpenUtau.Core.Ustx;
 using ReactiveUI;
 
 namespace OpenUtau.App.Controls {
-    class PhonemeCanvas : Canvas {
+    class PhonemeCanvas : Control {
+        public static readonly DirectProperty<PhonemeCanvas, IBrush> BackgroundProperty =
+            AvaloniaProperty.RegisterDirect<PhonemeCanvas, IBrush>(
+                nameof(Background),
+                o => o.Background,
+                (o, v) => o.Background = v);
         public static readonly DirectProperty<PhonemeCanvas, double> TickWidthProperty =
             AvaloniaProperty.RegisterDirect<PhonemeCanvas, double>(
                 nameof(TickWidth),
@@ -30,6 +37,10 @@ namespace OpenUtau.App.Controls {
                 o => o.ShowPhoneme,
                 (o, v) => o.ShowPhoneme = v);
 
+        public IBrush Background {
+            get => background;
+            private set => SetAndRaise(BackgroundProperty, ref background, value);
+        }
         public double TickWidth {
             get => tickWidth;
             private set => SetAndRaise(TickWidthProperty, ref tickWidth, value);
@@ -47,6 +58,7 @@ namespace OpenUtau.App.Controls {
             private set => SetAndRaise(ShowPhonemeProperty, ref showPhoneme, value);
         }
 
+        private IBrush background = Brushes.White;
         private double tickWidth;
         private double tickOffset;
         private UVoicePart? part;
@@ -77,11 +89,8 @@ namespace OpenUtau.App.Controls {
                 });
         }
 
-        protected override void OnPropertyChanged<T>(AvaloniaPropertyChangedEventArgs<T> change) {
+        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change) {
             base.OnPropertyChanged(change);
-            if (!change.IsEffectiveValueChange) {
-                return;
-            }
             InvalidateVisual();
         }
 
@@ -90,10 +99,12 @@ namespace OpenUtau.App.Controls {
             if (Part == null || !ShowPhoneme) {
                 return;
             }
+            string langCode = PhonemeUIRender.getLangCode(Part);
             var viewModel = ((PianoRollViewModel?)DataContext)?.NotesViewModel;
             if (viewModel == null) {
                 return;
             }
+            context.DrawRectangle(Background, null, Bounds.WithX(0).WithY(0));
             double leftTick = TickOffset - 480;
             double rightTick = TickOffset + Bounds.Width / TickWidth + 480;
             bool raiseText = false;
@@ -102,23 +113,24 @@ namespace OpenUtau.App.Controls {
             const double y = 35.5;
             const double height = 24;
             foreach (var phoneme in Part.phonemes) {
-                double leftBound = phoneme.position - viewModel.Project.MillisecondToTick(phoneme.preutter);
+                double leftBound = viewModel.Project.timeAxis.MsPosToTickPos(phoneme.PositionMs - phoneme.preutter) - Part.position;
                 double rightBound = phoneme.End;
                 if (leftBound > rightTick || rightBound < leftTick || phoneme.Parent.OverlapError) {
                     continue;
                 }
-                int position = phoneme.position;
-                double x = Math.Round(viewModel.TickToneToPoint(position, 0).X) + 0.5;
+                var timeAxis = viewModel.Project.timeAxis;
+                double x = Math.Round(viewModel.TickToneToPoint(phoneme.position, 0).X) + 0.5;
+                double posMs = phoneme.PositionMs;
                 if (!phoneme.Error) {
-                    double x0 = viewModel.TickToneToPoint(position + viewModel.Project.MillisecondToTick(phoneme.envelope.data[0].X), 0).X;
+                    double x0 = viewModel.TickToneToPoint(timeAxis.MsPosToTickPos(posMs + phoneme.envelope.data[0].X) - Part.position, 0).X;
                     double y0 = (1 - phoneme.envelope.data[0].Y / 100) * height;
-                    double x1 = viewModel.TickToneToPoint(position + viewModel.Project.MillisecondToTick(phoneme.envelope.data[1].X), 0).X;
+                    double x1 = viewModel.TickToneToPoint(timeAxis.MsPosToTickPos(posMs + phoneme.envelope.data[1].X) - Part.position, 0).X;
                     double y1 = (1 - phoneme.envelope.data[1].Y / 100) * height;
-                    double x2 = viewModel.TickToneToPoint(position + viewModel.Project.MillisecondToTick(phoneme.envelope.data[2].X), 0).X;
+                    double x2 = viewModel.TickToneToPoint(timeAxis.MsPosToTickPos(posMs + phoneme.envelope.data[2].X) - Part.position, 0).X;
                     double y2 = (1 - phoneme.envelope.data[2].Y / 100) * height;
-                    double x3 = viewModel.TickToneToPoint(position + viewModel.Project.MillisecondToTick(phoneme.envelope.data[3].X), 0).X;
+                    double x3 = viewModel.TickToneToPoint(timeAxis.MsPosToTickPos(posMs + phoneme.envelope.data[3].X) - Part.position, 0).X;
                     double y3 = (1 - phoneme.envelope.data[3].Y / 100) * height;
-                    double x4 = viewModel.TickToneToPoint(position + viewModel.Project.MillisecondToTick(phoneme.envelope.data[4].X), 0).X;
+                    double x4 = viewModel.TickToneToPoint(timeAxis.MsPosToTickPos(posMs + phoneme.envelope.data[4].X) - Part.position, 0).X;
                     double y4 = (1 - phoneme.envelope.data[4].Y / 100) * height;
 
                     var pen = selectedNotes.Contains(phoneme.Parent) ? ThemeManager.AccentPen2 : ThemeManager.AccentPen1;
@@ -133,11 +145,11 @@ namespace OpenUtau.App.Controls {
                     context.DrawGeometry(brush, pen, polyline);
 
                     brush = phoneme.preutterDelta.HasValue ? pen!.Brush : ThemeManager.BackgroundBrush;
-                    using (var state = context.PushPreTransform(Matrix.CreateTranslation(x0, y + y0 - 1))) {
+                    using (var state = context.PushTransform(Matrix.CreateTranslation(x0, y + y0 - 1))) {
                         context.DrawGeometry(brush, pen, pointGeometry);
                     }
                     brush = phoneme.overlapDelta.HasValue ? pen!.Brush : ThemeManager.BackgroundBrush;
-                    using (var state = context.PushPreTransform(Matrix.CreateTranslation(point1))) {
+                    using (var state = context.PushTransform(Matrix.CreateTranslation(point1))) {
                         context.DrawGeometry(brush, pen, pointGeometry);
                     }
                 }
@@ -152,21 +164,13 @@ namespace OpenUtau.App.Controls {
                 if (viewModel.TickWidth > ViewConstants.PianoRollTickWidthShowDetails) {
                     string phonemeText = !string.IsNullOrEmpty(phoneme.phonemeMapped) ? phoneme.phonemeMapped : phoneme.phoneme;
                     if (!string.IsNullOrEmpty(phonemeText)) {
-                        var bold = phoneme.rawPhoneme != phoneme.phoneme;
-                        var textLayout = TextLayoutCache.Get(phonemeText, ThemeManager.ForegroundBrush!, 12, bold);
-                        if (x < lastTextEndX) {
-                            raiseText = !raiseText;
-                        } else {
-                            raiseText = false;
-                        }
-                        double textY = raiseText ? 2 : 18;
-                        var size = new Size(textLayout.Size.Width + 4, textLayout.Size.Height - 2);
-                        using (var state = context.PushPreTransform(Matrix.CreateTranslation(x + 2, textY))) {
+                        (double textX, double textY, Size size, TextLayout textLayout) 
+                        = PhonemeUIRender.AliasPosition(viewModel, phoneme, langCode, ref lastTextEndX, ref raiseText);
+                        using (var state = context.PushTransform(Matrix.CreateTranslation(textX + 2, textY))) {
                             var pen = mouseoverPhoneme == phoneme ? ThemeManager.AccentPen1Thickness2 : ThemeManager.NeutralAccentPenSemi;
                             context.DrawRectangle(ThemeManager.BackgroundBrush, pen, new Rect(new Point(-2, 1.5), size), 4, 4);
-                            textLayout.Draw(context);
+                            textLayout.Draw(context, new Point());
                         }
-                        lastTextEndX = x + size.Width;
                     }
                 }
             }

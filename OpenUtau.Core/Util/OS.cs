@@ -13,8 +13,27 @@ namespace OpenUtau {
             if (Directory.Exists(path)) {
                 Process.Start(new ProcessStartInfo {
                     FileName = GetOpener(),
-                    Arguments = path,
+                    Arguments = GetWrappedPath(path),
                 });
+            }
+        }
+
+        public static void GotoFile(string path) {
+            if (File.Exists(path)) {
+                var wrappedPath = GetWrappedPath(path);
+                if (IsWindows()) {
+                    Process.Start(new ProcessStartInfo {
+                        FileName = GetOpener(),
+                        Arguments = $"/select, {wrappedPath}",
+                    });
+                } else if (IsMacOS()) {
+                    Process.Start(new ProcessStartInfo {
+                        FileName = GetOpener(),
+                        Arguments = $" -R {wrappedPath}",
+                    });
+                } else {
+                    OpenFolder(Path.GetDirectoryName(path));
+                }
             }
         }
 
@@ -25,15 +44,32 @@ namespace OpenUtau {
             });
         }
 
+        public static bool AppExists(string path) {
+            if (IsMacOS()) {
+                return Directory.Exists(path) && path.EndsWith(".app");
+            } else {
+                return File.Exists(path);
+            }
+        }
+
         public static string GetUpdaterRid() {
             if (IsWindows()) {
                 if (RuntimeInformation.ProcessArchitecture == Architecture.X86) {
                     return "win-x86";
                 }
+                if (RuntimeInformation.ProcessArchitecture == Architecture.Arm64) {
+                    return "win-arm64";
+                }
                 return "win-x64";
             } else if (IsMacOS()) {
+                if (RuntimeInformation.ProcessArchitecture == Architecture.Arm64) {
+                    return "osx-arm64";
+                }
                 return "osx-x64";
             } else if (IsLinux()) {
+                if (RuntimeInformation.ProcessArchitecture == Architecture.Arm64) {
+                    return "linux-arm64";
+                }
                 return "linux-x64";
             }
             throw new NotSupportedException();
@@ -68,6 +104,13 @@ namespace OpenUtau {
                 }
             }
             throw new IOException($"None of {string.Join(", ", linuxOpeners)} found.");
+        }
+        private static string GetWrappedPath(string path) {
+            if (IsWindows()) {
+                return path;
+            } else {
+                return $"\"{path}\"";
+            }
         }
     }
 }

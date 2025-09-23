@@ -11,6 +11,9 @@ namespace OpenUtau.Core.Ustx {
     public class UNote : IComparable {
         static readonly Regex phoneticHintPattern = new Regex(@"\[(.*)\]");
 
+        /// <summary>
+        /// Position of the note in ticks, relative to the beginning of the part.
+        /// </summary>
         public int position;
         public int duration;
         public int tone;
@@ -18,12 +21,17 @@ namespace OpenUtau.Core.Ustx {
         public UPitch pitch;
         public UVibrato vibrato;
 
-        [Obsolete("Only used for upgrading ustx v0.1")]
-        public Dictionary<string, double?> expressions;
         public List<UExpression> phonemeExpressions = new List<UExpression>();
         public List<UPhonemeOverride> phonemeOverrides = new List<UPhonemeOverride>();
 
         [YamlIgnore] public int End => position + duration;
+
+        /// <summary>
+        /// Position of the note in milliseconds, relative to the beginning of the project.
+        /// </summary>
+        [YamlIgnore] public double PositionMs { get; set; }
+        [YamlIgnore] public double DurationMs => EndMs - PositionMs;
+        [YamlIgnore] public double EndMs { get; set; }
         [YamlIgnore] public bool Selected { get; set; } = false;
         [YamlIgnore] public UNote Prev { get; set; }
         [YamlIgnore] public UNote Next { get; set; }
@@ -34,6 +42,8 @@ namespace OpenUtau.Core.Ustx {
         [YamlIgnore] public int RightBound => position + duration;
         [YamlIgnore] public bool Error { get; set; } = false;
         [YamlIgnore] public bool OverlapError { get; set; } = false;
+        [YamlIgnore] public List<UExpression> phonemizerExpressions = new List<UExpression>();
+        [YamlIgnore] public int[] phonemeIndexes { get; set; } = new int[0];
 
         public static UNote Create() {
             var note = new UNote();
@@ -60,10 +70,11 @@ namespace OpenUtau.Core.Ustx {
 
         public void AfterLoad(UProject project, UTrack track, UVoicePart part) {
             foreach (var exp in phonemeExpressions) {
-                if (project.expressions.TryGetValue(exp.abbr, out var descriptor)) {
+                if (track.TryGetExpDescriptor(project, exp.abbr, out var descriptor)) {
                     exp.descriptor = descriptor;
                 }
             }
+            phonemeExpressions = phonemeExpressions.Where(exp => exp.descriptor != null).ToList();
         }
 
         public void BeforeSave(UProject project, UTrack track, UVoicePart part) {
@@ -75,6 +86,8 @@ namespace OpenUtau.Core.Ustx {
 
         public void Validate(ValidateOptions options, UProject project, UTrack track, UVoicePart part) {
             duration = Math.Max(10, duration);
+            PositionMs = project.timeAxis.TickPosToMsPos(part.position + position);
+            EndMs = project.timeAxis.TickPosToMsPos(part.position + End);
             if (Prev != null && Prev.End > position) {
                 Error = true;
                 OverlapError = true;
@@ -95,7 +108,7 @@ namespace OpenUtau.Core.Ustx {
         }
 
         static List<Phonemizer.PhonemeAttributes> attributesBuffer = new List<Phonemizer.PhonemeAttributes>();
-        internal Phonemizer.Note ToPhonemizerNote(UTrack track) {
+        internal Phonemizer.Note ToPhonemizerNote(UTrack track, UPart part) {
             string lrc = lyric;
             string phoneticHint = null;
             lrc = phoneticHintPattern.Replace(lrc, match => {
@@ -137,7 +150,7 @@ namespace OpenUtau.Core.Ustx {
                 lyric = lrc.Trim(),
                 phoneticHint = phoneticHint?.Trim(),
                 tone = tone,
-                position = position,
+                position = part.position + position,
                 duration = duration,
                 phonemeAttributes = attributes,
             };
@@ -152,34 +165,83 @@ namespace OpenUtau.Core.Ustx {
             return result;
         }
 
-        /*
-        public float GetExpression(UProject project, string abbr) {
-            var descriptor = project.expressions[abbr];
-            Trace.Assert(descriptor.isNoteExpression);
-            var note = Extends ?? this;
-            var expression = note.noteExpressions.FirstOrDefault(exp => exp.descriptor == descriptor);
-            return expression == null ? expression.value : descriptor.defaultValue;
+        public List<Tuple<float, bool>> GetExpression(UProject project, UTrack track, string abbr) {
+            track.TryGetExpression(project, abbr, out UExpression trackExp);
+            var list = new List<Tuple<float, bool>>();
+
+            if (phonemeIndexes != null && phonemeIndexes.Length > 0) {
+                int indexes = phonemeIndexes.LastOrDefault() + 1;
+                for (int i = 0; i < indexes; i++) {
+                    var phonemeExp = phonemeExpressions.FirstOrDefault(exp => exp.descriptor?.abbr == abbr && exp.index == i);
+                    if (phonemeExp != null) {
+                        list.Add(Tuple.Create(phonemeExp.value, true));
+                    } else {
+                        var phonemizerExp = phonemizerExpressions.FirstOrDefault(exp => exp.descriptor?.abbr == abbr && exp.index == i);
+                        if (phonemizerExp != null) {
+                            list.Add(Tuple.Create(phonemizerExp.value, false));
+                        } else {
+                            list.Add(Tuple.Create(trackExp.value, false));
+                        }
+                    }
+                }
+            }
+            return list;
         }
 
-        public void SetExpression(UProject project, string abbr, float value) {
-            var descriptor = project.expressions[abbr];
-            Trace.Assert(descriptor.isNoteExpression);
-            var note = Extends ?? this;
-            if (value == descriptor.defaultValue) {
-                note.noteExpressions.RemoveAll(exp => exp.descriptor == descriptor);
+        /// <summary>
+        /// Returns value if phoneme has expression, null otherwise.
+        /// </summary>
+        public float?[] GetExpressionNoteHas(UProject project, UTrack track, string abbr) {
+            var list = new List<float?>();
+
+            if (phonemeIndexes != null && phonemeIndexes.Length > 0) {
+                int indexes = phonemeIndexes.LastOrDefault() + 1;
+                UExpression? phonemeExp = null;
+
+                for (int i = 0; i < indexes; i++) {
+                    if (phonemeIndexes.Contains(i)) {
+                        phonemeExp = phonemeExpressions.FirstOrDefault(exp => exp.descriptor?.abbr == abbr && exp.index == i);
+                    }
+                    if (phonemeExp != null) {
+                        list.Add(phonemeExp.value);
+                    } else {
+                        list.Add(null);
+                    }
+                }
+            }
+            return list.ToArray();
+        }
+
+        public void SetExpression(UProject project, UTrack track, string abbr, float?[] values) {
+            if (!track.TryGetExpression(project, abbr, out UExpression trackExp)) {
                 return;
             }
-            var expression = note.noteExpressions.FirstOrDefault(exp => exp.descriptor == descriptor);
-            if (expression != null) {
-                expression.value = value;
-            } else {
-                note.noteExpressions.Add(new UExpression(descriptor) {
-                    descriptor = descriptor,
-                    value = value,
-                });
+            if (values.Length == 0) {
+                return;
+            }
+
+            phonemeExpressions.RemoveAll(exp => exp.descriptor?.abbr == abbr);
+
+            int indexes = phonemeIndexes.LastOrDefault() + 1;
+            for (int i = 0; i < indexes; i++) {
+                if (i == 0 || phonemeIndexes.Contains(i)) {
+                    float? value;
+                    if (values.Length > i) {
+                        value = values[i];
+                    } else {
+                        value = values.Last();
+                    }
+                    if (value == null) {
+                        continue;
+                    }
+
+                    phonemeExpressions.Add(new UExpression(trackExp.descriptor) {
+                        index = i,
+                        value = (float)value,
+                    });
+                }
             }
         }
-        */
 
         public UNote Clone() {
             return new UNote() {
@@ -191,6 +253,7 @@ namespace OpenUtau.Core.Ustx {
                 vibrato = vibrato.Clone(),
                 phonemeExpressions = phonemeExpressions.Select(exp => exp.Clone()).ToList(),
                 phonemeOverrides = phonemeOverrides.Select(o => o.Clone()).ToList(),
+                phonemeIndexes = (int[])phonemeIndexes.Clone()
             };
         }
     }
@@ -208,7 +271,10 @@ namespace OpenUtau.Core.Ustx {
         float _out = NotePresets.Default.DefaultVibrato.VibratoOut;
         // Shift percentage of period length.
         float _shift = NotePresets.Default.DefaultVibrato.VibratoShift;
-        float _drift;
+        // Shift the whole vibrato up and down.
+        float _drift = NotePresets.Default.DefaultVibrato.VibratoDrift;
+        // Percentage of volume reduction in linkage with vibrato. When this is 100%, volume will be 1.2 times to 0.2 times regardless of depth.
+        float _volLink = NotePresets.Default.DefaultVibrato.VibratoVolLink;
 
         public float length { get => _length; set => _length = Math.Max(0, Math.Min(100, value)); }
         public float period { get => _period; set => _period = Math.Max(5, Math.Min(500, value)); }
@@ -231,6 +297,7 @@ namespace OpenUtau.Core.Ustx {
         }
         public float shift { get => _shift; set => _shift = Math.Max(0, Math.Min(100, value)); }
         public float drift { get => _drift; set => _drift = Math.Max(-100, Math.Min(100, value)); }
+        public float volLink { get => _volLink; set => _volLink = Math.Max(-100, Math.Min(100, value)); }
 
         [YamlIgnore] public float NormalizedStart => 1f - length / 100f;
 
@@ -242,7 +309,8 @@ namespace OpenUtau.Core.Ustx {
                 @in = @in,
                 @out = @out,
                 shift = shift,
-                drift = drift
+                drift = drift,
+                volLink = volLink
             };
             return result;
         }
@@ -264,7 +332,7 @@ namespace OpenUtau.Core.Ustx {
             float nOut = length / 100f * @out / 100f;
             float nOutPos = 1f - nOut;
             float t = (nPos - nStart) / nPeriod + shift / 100f;
-            float y = (float)Math.Sin(2 * Math.PI * t) * depth;
+            float y = (float)Math.Sin(2 * Math.PI * t) * depth + (depth / 100 * drift);
             if (nPos < nStart) {
                 y = 0;
             } else if (nPos < nInPos) {
@@ -273,6 +341,36 @@ namespace OpenUtau.Core.Ustx {
                 y *= (1f - nPos) / nOut;
             }
             return new Vector2(note.position + note.duration * nPos, note.tone + y / 100f);
+        }
+        /// <summary>
+        /// Evaluate the volume of the position on the vibrato curve.
+        /// </summary>
+        public float EvaluateVolume(float nPos, float nPeriod) {
+            float nStart = NormalizedStart;
+            float nIn = length / 100f * @in / 100f;
+            float nInPos = nStart + nIn;
+            float nOut = length / 100f * @out / 100f;
+            float nOutPos = 1f - nOut;
+            float shift = this.shift;
+            float volLink = this.volLink;
+            if (volLink < 0) {
+                shift += 50;
+                if (shift > 100) {
+                    shift -= 100;
+                }
+                volLink *= -1;
+            }
+            float t = (nPos - nStart) / nPeriod + shift / 100f;
+            float reduction = (-(float)Math.Sin(2 * Math.PI * t) / 2 + 0.3f) * volLink / 100;
+            if (nPos < nStart) {
+                reduction = 0;
+            } else if (nPos < nInPos) {
+                reduction *= (nPos - nStart) / nIn;
+            } else if (nPos > nOutPos) {
+                reduction *= (1f - nPos) / nOut;
+            }
+            float y = 1 - reduction;
+            return y;
         }
 
         public Vector2 GetEnvelopeStart(UNote note) {
@@ -303,8 +401,8 @@ namespace OpenUtau.Core.Ustx {
             return new Vector2(note.position + note.duration, note.tone - 1.5f);
         }
 
-        public void GetPeriodStartEnd(UNote note, UProject project, out Vector2 start, out Vector2 end) {
-            float periodTick = project.MillisecondToTick(period);
+        public void GetPeriodStartEnd(UProject project, UNote note, out Vector2 start, out Vector2 end) {
+            float periodTick = project.timeAxis.TicksBetweenMsPos(note.PositionMs, note.PositionMs + period);
             float shiftTick = periodTick * shift / 100f;
             start = new Vector2(
                 note.position + note.duration * NormalizedStart + shiftTick,
@@ -339,7 +437,14 @@ namespace OpenUtau.Core.Ustx {
     };
 
     public class PitchPoint : IComparable<PitchPoint> {
+        /// <summary>
+        /// Position relative to the beginning of the note in milliseconds.
+        /// </summary>
         public float X;
+
+        /// <summary>
+        /// Pitch relative to the tone of the note in 0.1 semi-tones.
+        /// </summary>
         public float Y;
         public PitchPointShape shape;
 
@@ -379,24 +484,24 @@ namespace OpenUtau.Core.Ustx {
             return result;
         }
 
-        public double? Sample(UProject project, UNote note, double tick) {
+        public double? Sample(UProject project, UPart part, UNote note, double tick) {
             for (int i = 0; i < note.pitch.data.Count - 1; i++) {
                 var p1 = note.pitch.data[i];
-                int t1 = note.position + project.MillisecondToTick(p1.X);
+                int t1 = project.timeAxis.MsPosToTickPos(note.PositionMs + p1.X) - part.position;
                 var p2 = note.pitch.data[i + 1];
-                int t2 = note.position + project.MillisecondToTick(p2.X);
+                int t2 = project.timeAxis.MsPosToTickPos(note.PositionMs + p2.X) - part.position;
                 if (t1 <= tick && tick <= t2) {
                     return MusicMath.InterpolateShape(
                         t1, t2, p1.Y, p2.Y, tick, p1.shape) * 10;
                 }
             }
             var pFirst = note.pitch.data.First();
-            var tFirst = note.position + project.MillisecondToTick(pFirst.X);
+            var tFirst = project.timeAxis.MsPosToTickPos(note.PositionMs + pFirst.X) - part.position;
             if (tick < tFirst) {
                 return pFirst.Y * 10;
             }
             var pLast = note.pitch.data.Last();
-            var tLast = note.position + project.MillisecondToTick(pLast.X);
+            var tLast = project.timeAxis.MsPosToTickPos(note.PositionMs + pLast.X) - part.position;
             if (tick > tLast) {
                 return pLast.Y * 10;
             }
