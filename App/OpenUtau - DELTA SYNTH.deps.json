@@ -1,0 +1,1483 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0/win-x64",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {},
+    ".NETCoreApp,Version=v10.0/win-x64": {
+      "OpenUtau - DELTA SYNTH/1.2.1": {
+        "dependencies": {
+          "Avalonia": "11.3.18",
+          "Avalonia.Controls.ColorPicker": "11.3.18",
+          "Avalonia.Controls.DataGrid": "11.3.13",
+          "Avalonia.Desktop": "11.3.18",
+          "Avalonia.Diagnostics": "11.3.18",
+          "Avalonia.ReactiveUI": "11.3.9",
+          "Avalonia.Themes.Fluent": "11.3.18",
+          "Material.Avalonia": "3.13.3",
+          "NetSparkleUpdater.SparkleUpdater": "2.2.3",
+          "OpenUtau.Core": "1.0.0",
+          "OpenUtau.Plugin.Builtin": "1.0.0",
+          "ReactiveUI.Fody": "19.5.41",
+          "Serilog": "4.1.0",
+          "Serilog.Sinks.Console": "6.0.0",
+          "Serilog.Sinks.Debug": "3.0.0",
+          "Serilog.Sinks.File": "6.0.0"
+        },
+        "runtime": {
+          "OpenUtau - DELTA SYNTH.dll": {}
+        }
+      },
+      "AsyncIO/0.1.69": {
+        "runtime": {
+          "lib/netstandard2.0/AsyncIO.dll": {
+            "assemblyVersion": "0.1.69.0",
+            "fileVersion": "0.1.69.0",
+            "localPath": "AsyncIO.dll"
+          }
+        }
+      },
+      "Avalonia/11.3.18": {
+        "dependencies": {
+          "Avalonia.Remote.Protocol": "11.3.18",
+          "MicroCom.Runtime": "0.11.0"
+        },
+        "runtime": {
+          "lib/net8.0/Avalonia.Base.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.Base.dll"
+          },
+          "lib/net8.0/Avalonia.Controls.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.Controls.dll"
+          },
+          "lib/net8.0/Avalonia.DesignerSupport.dll": {
+            "assemblyVersion": "0.7.0.0",
+            "fileVersion": "0.7.0.0",
+            "localPath": "Avalonia.DesignerSupport.dll"
+          },
+          "lib/net8.0/Avalonia.Dialogs.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.Dialogs.dll"
+          },
+          "lib/net8.0/Avalonia.Markup.Xaml.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.Markup.Xaml.dll"
+          },
+          "lib/net8.0/Avalonia.Markup.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.Markup.dll"
+          },
+          "lib/net8.0/Avalonia.Metal.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.Metal.dll"
+          },
+          "lib/net8.0/Avalonia.MicroCom.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.MicroCom.dll"
+          },
+          "lib/net8.0/Avalonia.OpenGL.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.OpenGL.dll"
+          },
+          "lib/net8.0/Avalonia.Vulkan.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.Vulkan.dll"
+          },
+          "lib/net8.0/Avalonia.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.dll"
+          }
+        }
+      },
+      "Avalonia.Angle.Windows.Natives/2.1.25547.20250602": {
+        "native": {
+          "runtimes/win-x64/native/av_libglesv2.dll": {
+            "fileVersion": "2.1.25606.0",
+            "localPath": "av_libglesv2.dll"
+          }
+        }
+      },
+      "Avalonia.Controls.ColorPicker/11.3.18": {
+        "dependencies": {
+          "Avalonia": "11.3.18",
+          "Avalonia.Remote.Protocol": "11.3.18"
+        },
+        "runtime": {
+          "lib/net8.0/Avalonia.Controls.ColorPicker.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.Controls.ColorPicker.dll"
+          }
+        }
+      },
+      "Avalonia.Controls.DataGrid/11.3.13": {
+        "dependencies": {
+          "Avalonia": "11.3.18"
+        },
+        "runtime": {
+          "lib/net8.0/Avalonia.Controls.DataGrid.dll": {
+            "assemblyVersion": "11.3.13.0",
+            "fileVersion": "11.3.13.0",
+            "localPath": "Avalonia.Controls.DataGrid.dll"
+          }
+        }
+      },
+      "Avalonia.Desktop/11.3.18": {
+        "dependencies": {
+          "Avalonia": "11.3.18",
+          "Avalonia.Native": "11.3.18",
+          "Avalonia.Skia": "11.3.18",
+          "Avalonia.Win32": "11.3.18",
+          "Avalonia.X11": "11.3.18"
+        },
+        "runtime": {
+          "lib/net8.0/Avalonia.Desktop.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.Desktop.dll"
+          }
+        }
+      },
+      "Avalonia.Diagnostics/11.3.18": {
+        "dependencies": {
+          "Avalonia": "11.3.18",
+          "Avalonia.Controls.ColorPicker": "11.3.18",
+          "Avalonia.Themes.Simple": "11.3.18"
+        },
+        "runtime": {
+          "lib/net8.0/Avalonia.Diagnostics.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.Diagnostics.dll"
+          }
+        }
+      },
+      "Avalonia.FreeDesktop/11.3.18": {
+        "dependencies": {
+          "Avalonia": "11.3.18",
+          "Tmds.DBus.Protocol": "0.21.3"
+        },
+        "runtime": {
+          "lib/net8.0/Avalonia.FreeDesktop.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.FreeDesktop.dll"
+          }
+        }
+      },
+      "Avalonia.Native/11.3.18": {
+        "dependencies": {
+          "Avalonia": "11.3.18"
+        },
+        "runtime": {
+          "lib/net8.0/Avalonia.Native.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.Native.dll"
+          }
+        }
+      },
+      "Avalonia.ReactiveUI/11.3.9": {
+        "dependencies": {
+          "Avalonia": "11.3.18",
+          "ReactiveUI": "20.1.1",
+          "System.Reactive": "6.0.1"
+        },
+        "runtime": {
+          "lib/net8.0/Avalonia.ReactiveUI.dll": {
+            "assemblyVersion": "11.3.9.0",
+            "fileVersion": "11.3.9.0",
+            "localPath": "Avalonia.ReactiveUI.dll"
+          }
+        }
+      },
+      "Avalonia.Remote.Protocol/11.3.18": {
+        "runtime": {
+          "lib/net8.0/Avalonia.Remote.Protocol.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.Remote.Protocol.dll"
+          }
+        }
+      },
+      "Avalonia.Skia/11.3.18": {
+        "dependencies": {
+          "Avalonia": "11.3.18",
+          "HarfBuzzSharp": "8.3.1.1",
+          "SkiaSharp": "2.88.9"
+        },
+        "runtime": {
+          "lib/net8.0/Avalonia.Skia.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.Skia.dll"
+          }
+        }
+      },
+      "Avalonia.Themes.Fluent/11.3.18": {
+        "dependencies": {
+          "Avalonia": "11.3.18"
+        },
+        "runtime": {
+          "lib/net8.0/Avalonia.Themes.Fluent.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.Themes.Fluent.dll"
+          }
+        }
+      },
+      "Avalonia.Themes.Simple/11.3.18": {
+        "dependencies": {
+          "Avalonia": "11.3.18"
+        },
+        "runtime": {
+          "lib/net8.0/Avalonia.Themes.Simple.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.Themes.Simple.dll"
+          }
+        }
+      },
+      "Avalonia.Win32/11.3.18": {
+        "dependencies": {
+          "Avalonia": "11.3.18",
+          "Avalonia.Angle.Windows.Natives": "2.1.25547.20250602"
+        },
+        "runtime": {
+          "lib/net8.0/Avalonia.Win32.Automation.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.Win32.Automation.dll"
+          },
+          "lib/net8.0/Avalonia.Win32.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.Win32.dll"
+          }
+        }
+      },
+      "Avalonia.X11/11.3.18": {
+        "dependencies": {
+          "Avalonia": "11.3.18",
+          "Avalonia.FreeDesktop": "11.3.18",
+          "Avalonia.Skia": "11.3.18"
+        },
+        "runtime": {
+          "lib/net8.0/Avalonia.X11.dll": {
+            "assemblyVersion": "11.3.18.0",
+            "fileVersion": "11.3.18.0",
+            "localPath": "Avalonia.X11.dll"
+          }
+        }
+      },
+      "BunLabs.NAudio.Flac/2.0.1": {
+        "dependencies": {
+          "NAudio.Core": "2.2.1"
+        },
+        "runtime": {
+          "lib/netstandard2.0/NAudio.Flac.dll": {
+            "assemblyVersion": "2.0.1.0",
+            "fileVersion": "2.0.1.0",
+            "localPath": "NAudio.Flac.dll"
+          }
+        }
+      },
+      "Concentus/2.2.1": {
+        "runtime": {
+          "lib/net8.0/Concentus.dll": {
+            "assemblyVersion": "2.2.1.0",
+            "fileVersion": "2.2.1.0",
+            "localPath": "Concentus.dll"
+          }
+        }
+      },
+      "Concentus.Oggfile/1.0.6": {
+        "dependencies": {
+          "Concentus": "2.2.1"
+        },
+        "runtime": {
+          "lib/net8.0/Concentus.Oggfile.dll": {
+            "assemblyVersion": "1.0.6.0",
+            "fileVersion": "1.0.6.0",
+            "localPath": "Concentus.Oggfile.dll"
+          }
+        }
+      },
+      "csharp-kana/1.0.2": {
+        "runtime": {
+          "lib/net6.0/Kana.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0",
+            "localPath": "Kana.dll"
+          }
+        }
+      },
+      "csharp-pinyin/1.0.0": {
+        "runtime": {
+          "lib/net6.0/Pinyin.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0",
+            "localPath": "Pinyin.dll"
+          }
+        }
+      },
+      "DynamicData/8.4.1": {
+        "dependencies": {
+          "System.Reactive": "6.0.1"
+        },
+        "runtime": {
+          "lib/net8.0/DynamicData.dll": {
+            "assemblyVersion": "8.4.0.0",
+            "fileVersion": "8.4.1.20756",
+            "localPath": "DynamicData.dll"
+          }
+        }
+      },
+      "HarfBuzzSharp/8.3.1.1": {
+        "dependencies": {
+          "HarfBuzzSharp.NativeAssets.Win32": "8.3.1.1"
+        },
+        "runtime": {
+          "lib/net8.0/HarfBuzzSharp.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "8.3.1.1",
+            "localPath": "HarfBuzzSharp.dll"
+          }
+        }
+      },
+      "HarfBuzzSharp.NativeAssets.Win32/8.3.1.1": {
+        "native": {
+          "runtimes/win-x64/native/libHarfBuzzSharp.dll": {
+            "fileVersion": "0.0.0.0",
+            "localPath": "libHarfBuzzSharp.dll"
+          }
+        }
+      },
+      "Ignore/0.1.50": {
+        "runtime": {
+          "lib/netstandard2.0/Ignore.dll": {
+            "assemblyVersion": "0.1.0.0",
+            "fileVersion": "0.1.50.25509",
+            "localPath": "Ignore.dll"
+          }
+        }
+      },
+      "K4os.Hash.xxHash/1.0.8": {
+        "runtime": {
+          "lib/net6.0/K4os.Hash.xxHash.dll": {
+            "assemblyVersion": "1.0.8.0",
+            "fileVersion": "1.0.8.0",
+            "localPath": "K4os.Hash.xxHash.dll"
+          }
+        }
+      },
+      "Material.Avalonia/3.13.3": {
+        "dependencies": {
+          "Avalonia": "11.3.18"
+        },
+        "runtime": {
+          "lib/net8.0/Material.Avalonia.dll": {
+            "assemblyVersion": "3.13.3.0",
+            "fileVersion": "3.13.3.0",
+            "localPath": "Material.Avalonia.dll"
+          },
+          "lib/net8.0/Material.Colors.dll": {
+            "assemblyVersion": "3.13.3.0",
+            "fileVersion": "3.13.3.0",
+            "localPath": "Material.Colors.dll"
+          },
+          "lib/net8.0/Material.Ripple.dll": {
+            "assemblyVersion": "3.13.3.0",
+            "fileVersion": "3.13.3.0",
+            "localPath": "Material.Ripple.dll"
+          },
+          "lib/net8.0/Material.Styles.dll": {
+            "assemblyVersion": "3.13.3.0",
+            "fileVersion": "3.13.3.0",
+            "localPath": "Material.Styles.dll"
+          }
+        }
+      },
+      "Melanchall.DryWetMidi/7.2.0": {
+        "runtime": {
+          "lib/netstandard2.0/Melanchall.DryWetMidi.dll": {
+            "assemblyVersion": "7.2.0.0",
+            "fileVersion": "7.2.0.0",
+            "localPath": "Melanchall.DryWetMidi.dll"
+          }
+        }
+      },
+      "MicroCom.Runtime/0.11.0": {
+        "runtime": {
+          "lib/net5.0/MicroCom.Runtime.dll": {
+            "assemblyVersion": "0.11.0.0",
+            "fileVersion": "0.11.0.0",
+            "localPath": "MicroCom.Runtime.dll"
+          }
+        }
+      },
+      "Microsoft.Extensions.DependencyInjection.Abstractions/7.0.0": {
+        "runtime": {
+          "lib/net7.0/Microsoft.Extensions.DependencyInjection.Abstractions.dll": {
+            "assemblyVersion": "7.0.0.0",
+            "fileVersion": "7.0.22.51805",
+            "localPath": "Microsoft.Extensions.DependencyInjection.Abstractions.dll"
+          }
+        }
+      },
+      "Microsoft.Extensions.ObjectPool/10.0.0": {
+        "runtime": {
+          "lib/net10.0/Microsoft.Extensions.ObjectPool.dll": {
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.25.52411",
+            "localPath": "Microsoft.Extensions.ObjectPool.dll"
+          }
+        }
+      },
+      "Microsoft.ML.OnnxRuntime.DirectML/1.23.0": {
+        "dependencies": {
+          "Microsoft.ML.OnnxRuntime.Managed": "1.23.0"
+        },
+        "native": {
+          "runtimes/win-x64/native/onnxruntime.dll": {
+            "fileVersion": "1.23.25.926",
+            "localPath": "onnxruntime.dll"
+          },
+          "runtimes/win-x64/native/onnxruntime.lib": {
+            "fileVersion": "0.0.0.0",
+            "localPath": "onnxruntime.lib"
+          },
+          "runtimes/win-x64/native/onnxruntime_providers_shared.dll": {
+            "fileVersion": "1.23.25.926",
+            "localPath": "onnxruntime_providers_shared.dll"
+          }
+        }
+      },
+      "Microsoft.ML.OnnxRuntime.Managed/1.23.0": {
+        "dependencies": {
+          "System.Numerics.Tensors": "9.0.0"
+        },
+        "runtime": {
+          "lib/net8.0/Microsoft.ML.OnnxRuntime.dll": {
+            "assemblyVersion": "1.23.0.0",
+            "fileVersion": "1.23.0.0",
+            "localPath": "Microsoft.ML.OnnxRuntime.dll"
+          }
+        }
+      },
+      "NaCl.Net/0.1.13": {
+        "runtime": {
+          "lib/netstandard2.1/NaCl.dll": {
+            "assemblyVersion": "0.1.13.0",
+            "fileVersion": "0.1.13.0",
+            "localPath": "NaCl.dll"
+          }
+        }
+      },
+      "NAudio/2.2.1": {
+        "dependencies": {
+          "NAudio.Asio": "2.2.1",
+          "NAudio.Core": "2.2.1",
+          "NAudio.Midi": "2.2.1",
+          "NAudio.Wasapi": "2.2.1",
+          "NAudio.WinForms": "2.2.1",
+          "NAudio.WinMM": "2.2.1"
+        },
+        "runtime": {
+          "lib/net6.0-windows7.0/NAudio.dll": {
+            "assemblyVersion": "2.2.1.0",
+            "fileVersion": "2.2.1.0",
+            "localPath": "NAudio.dll"
+          }
+        }
+      },
+      "NAudio.Asio/2.2.1": {
+        "dependencies": {
+          "NAudio.Core": "2.2.1"
+        },
+        "runtime": {
+          "lib/netstandard2.0/NAudio.Asio.dll": {
+            "assemblyVersion": "2.2.1.0",
+            "fileVersion": "2.2.1.0",
+            "localPath": "NAudio.Asio.dll"
+          }
+        }
+      },
+      "NAudio.Core/2.2.1": {
+        "runtime": {
+          "lib/netstandard2.0/NAudio.Core.dll": {
+            "assemblyVersion": "2.2.1.0",
+            "fileVersion": "2.2.1.0",
+            "localPath": "NAudio.Core.dll"
+          }
+        }
+      },
+      "NAudio.Midi/2.2.1": {
+        "dependencies": {
+          "NAudio.Core": "2.2.1"
+        },
+        "runtime": {
+          "lib/netstandard2.0/NAudio.Midi.dll": {
+            "assemblyVersion": "2.2.1.0",
+            "fileVersion": "2.2.1.0",
+            "localPath": "NAudio.Midi.dll"
+          }
+        }
+      },
+      "NAudio.Vorbis/1.5.0": {
+        "dependencies": {
+          "NAudio.Core": "2.2.1",
+          "NVorbis": "0.10.4"
+        },
+        "runtime": {
+          "lib/netstandard2.0/NAudio.Vorbis.dll": {
+            "assemblyVersion": "1.5.0.0",
+            "fileVersion": "1.5.0.0",
+            "localPath": "NAudio.Vorbis.dll"
+          }
+        }
+      },
+      "NAudio.Wasapi/2.2.1": {
+        "dependencies": {
+          "NAudio.Core": "2.2.1"
+        },
+        "runtime": {
+          "lib/netstandard2.0/NAudio.Wasapi.dll": {
+            "assemblyVersion": "2.2.1.0",
+            "fileVersion": "2.2.1.0",
+            "localPath": "NAudio.Wasapi.dll"
+          }
+        }
+      },
+      "NAudio.WinForms/2.2.1": {
+        "dependencies": {
+          "NAudio.WinMM": "2.2.1"
+        },
+        "runtime": {
+          "lib/netcoreapp3.1/NAudio.WinForms.dll": {
+            "assemblyVersion": "2.2.1.0",
+            "fileVersion": "2.2.1.0",
+            "localPath": "NAudio.WinForms.dll"
+          }
+        }
+      },
+      "NAudio.WinMM/2.2.1": {
+        "dependencies": {
+          "NAudio.Core": "2.2.1"
+        },
+        "runtime": {
+          "lib/netstandard2.0/NAudio.WinMM.dll": {
+            "assemblyVersion": "2.2.1.0",
+            "fileVersion": "2.2.1.0",
+            "localPath": "NAudio.WinMM.dll"
+          }
+        }
+      },
+      "NeoLua/1.3.19": {
+        "runtime": {
+          "lib/net6.0/Neo.Lua.dll": {
+            "assemblyVersion": "5.3.0.0",
+            "fileVersion": "1.3.19.0",
+            "localPath": "Neo.Lua.dll"
+          }
+        }
+      },
+      "NetMQ/4.0.4.2": {
+        "dependencies": {
+          "AsyncIO": "0.1.69",
+          "NaCl.Net": "0.1.13",
+          "System.Security.Cryptography.Xml": "10.0.10",
+          "System.ServiceModel.Primitives": "10.0.652802"
+        },
+        "runtime": {
+          "lib/net10.0/NetMQ.dll": {
+            "assemblyVersion": "4.0.4.2",
+            "fileVersion": "4.0.4.2",
+            "localPath": "NetMQ.dll"
+          }
+        }
+      },
+      "NetSparkleUpdater.SparkleUpdater/2.2.3": {
+        "dependencies": {
+          "Portable.BouncyCastle": "1.9.0"
+        },
+        "runtime": {
+          "lib/net7.0/NetSparkle.dll": {
+            "assemblyVersion": "2.2.3.0",
+            "fileVersion": "2.2.3.0",
+            "localPath": "NetSparkle.dll"
+          }
+        }
+      },
+      "Newtonsoft.Json/13.0.3": {
+        "runtime": {
+          "lib/net6.0/Newtonsoft.Json.dll": {
+            "assemblyVersion": "13.0.0.0",
+            "fileVersion": "13.0.3.27908",
+            "localPath": "Newtonsoft.Json.dll"
+          }
+        }
+      },
+      "NLayer/2.0.1": {
+        "runtime": {
+          "lib/net8.0/NLayer.dll": {
+            "assemblyVersion": "2.0.1.0",
+            "fileVersion": "2.0.1.0",
+            "localPath": "NLayer.dll"
+          }
+        }
+      },
+      "NLayer.NAudioSupport/2.0.1": {
+        "dependencies": {
+          "NAudio.Core": "2.2.1",
+          "NLayer": "2.0.1"
+        },
+        "runtime": {
+          "lib/net8.0/NLayer.NAudioSupport.dll": {
+            "assemblyVersion": "2.0.1.0",
+            "fileVersion": "2.0.1.0",
+            "localPath": "NLayer.NAudioSupport.dll"
+          }
+        }
+      },
+      "NumSharp/0.30.0": {
+        "runtime": {
+          "lib/netstandard2.0/NumSharp.dll": {
+            "assemblyVersion": "0.30.0.0",
+            "fileVersion": "0.30.0.0",
+            "localPath": "NumSharp.dll"
+          }
+        }
+      },
+      "NVorbis/0.10.4": {
+        "runtime": {
+          "lib/netstandard2.0/NVorbis.dll": {
+            "assemblyVersion": "0.10.4.0",
+            "fileVersion": "0.10.4.0",
+            "localPath": "NVorbis.dll"
+          }
+        }
+      },
+      "NWaves/0.9.6": {
+        "runtime": {
+          "lib/net5.0/NWaves.dll": {
+            "assemblyVersion": "0.9.6.0",
+            "fileVersion": "0.9.6.0",
+            "localPath": "NWaves.dll"
+          }
+        }
+      },
+      "Portable.BouncyCastle/1.9.0": {
+        "runtime": {
+          "lib/netstandard2.0/BouncyCastle.Crypto.dll": {
+            "assemblyVersion": "1.9.0.0",
+            "fileVersion": "1.9.0.1",
+            "localPath": "BouncyCastle.Crypto.dll"
+          }
+        }
+      },
+      "ReactiveUI/20.1.1": {
+        "dependencies": {
+          "DynamicData": "8.4.1",
+          "Splat": "15.1.1"
+        },
+        "runtime": {
+          "lib/net8.0/ReactiveUI.dll": {
+            "assemblyVersion": "20.1.0.0",
+            "fileVersion": "20.1.1.46356",
+            "localPath": "ReactiveUI.dll"
+          }
+        }
+      },
+      "ReactiveUI.Fody/19.5.41": {
+        "dependencies": {
+          "ReactiveUI": "20.1.1"
+        },
+        "runtime": {
+          "lib/net8.0/ReactiveUI.Fody.Helpers.dll": {
+            "assemblyVersion": "19.5.0.0",
+            "fileVersion": "19.5.41.25387",
+            "localPath": "ReactiveUI.Fody.Helpers.dll"
+          }
+        }
+      },
+      "Serilog/4.1.0": {
+        "runtime": {
+          "lib/net8.0/Serilog.dll": {
+            "assemblyVersion": "4.1.0.0",
+            "fileVersion": "4.1.0.0",
+            "localPath": "Serilog.dll"
+          }
+        }
+      },
+      "Serilog.Sinks.Console/6.0.0": {
+        "dependencies": {
+          "Serilog": "4.1.0"
+        },
+        "runtime": {
+          "lib/net8.0/Serilog.Sinks.Console.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.0.0",
+            "localPath": "Serilog.Sinks.Console.dll"
+          }
+        }
+      },
+      "Serilog.Sinks.Debug/3.0.0": {
+        "dependencies": {
+          "Serilog": "4.1.0"
+        },
+        "runtime": {
+          "lib/net8.0/Serilog.Sinks.Debug.dll": {
+            "assemblyVersion": "3.0.0.0",
+            "fileVersion": "3.0.0.0",
+            "localPath": "Serilog.Sinks.Debug.dll"
+          }
+        }
+      },
+      "Serilog.Sinks.File/6.0.0": {
+        "dependencies": {
+          "Serilog": "4.1.0"
+        },
+        "runtime": {
+          "lib/net8.0/Serilog.Sinks.File.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.0.0",
+            "localPath": "Serilog.Sinks.File.dll"
+          }
+        }
+      },
+      "SharpCompress/0.48.1": {
+        "runtime": {
+          "lib/net10.0/SharpCompress.dll": {
+            "assemblyVersion": "0.48.1.0",
+            "fileVersion": "0.48.1.0",
+            "localPath": "SharpCompress.dll"
+          }
+        }
+      },
+      "SkiaSharp/2.88.9": {
+        "dependencies": {
+          "SkiaSharp.NativeAssets.Win32": "2.88.9"
+        },
+        "runtime": {
+          "lib/net6.0/SkiaSharp.dll": {
+            "assemblyVersion": "2.88.0.0",
+            "fileVersion": "2.88.9.0",
+            "localPath": "SkiaSharp.dll"
+          }
+        }
+      },
+      "SkiaSharp.NativeAssets.Win32/2.88.9": {
+        "native": {
+          "runtimes/win-x64/native/libSkiaSharp.dll": {
+            "fileVersion": "0.0.0.0",
+            "localPath": "libSkiaSharp.dll"
+          }
+        }
+      },
+      "Splat/15.1.1": {
+        "runtime": {
+          "lib/net8.0/Splat.dll": {
+            "assemblyVersion": "15.1.0.0",
+            "fileVersion": "15.1.1.17670",
+            "localPath": "Splat.dll"
+          }
+        }
+      },
+      "System.Numerics.Tensors/9.0.0": {
+        "runtime": {
+          "lib/net9.0/System.Numerics.Tensors.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.24.52809",
+            "localPath": "System.Numerics.Tensors.dll"
+          }
+        }
+      },
+      "System.Reactive/6.0.1": {
+        "runtime": {
+          "lib/net6.0/System.Reactive.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.1.7420",
+            "localPath": "System.Reactive.dll"
+          }
+        }
+      },
+      "System.Security.Cryptography.Pkcs/10.0.10": {
+        "runtime": {
+          "runtimes/win/lib/net10.0/System.Security.Cryptography.Pkcs.dll": {
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.1026.32716",
+            "localPath": "System.Security.Cryptography.Pkcs.dll"
+          }
+        }
+      },
+      "System.Security.Cryptography.Xml/10.0.10": {
+        "dependencies": {
+          "System.Security.Cryptography.Pkcs": "10.0.10"
+        },
+        "runtime": {
+          "lib/net10.0/System.Security.Cryptography.Xml.dll": {
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.1026.32716",
+            "localPath": "System.Security.Cryptography.Xml.dll"
+          }
+        }
+      },
+      "System.ServiceModel.Primitives/10.0.652802": {
+        "dependencies": {
+          "Microsoft.Extensions.ObjectPool": "10.0.0",
+          "System.Security.Cryptography.Xml": "10.0.10"
+        },
+        "runtime": {
+          "lib/net10.0/System.ServiceModel.Duplex.dll": {
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.25.52802",
+            "localPath": "System.ServiceModel.Duplex.dll"
+          },
+          "lib/net10.0/System.ServiceModel.Primitives.dll": {
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.25.52802",
+            "localPath": "System.ServiceModel.Primitives.dll"
+          },
+          "lib/net10.0/System.ServiceModel.Security.dll": {
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.25.52802",
+            "localPath": "System.ServiceModel.Security.dll"
+          },
+          "lib/net10.0/System.ServiceModel.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "10.0.25.52802",
+            "localPath": "System.ServiceModel.dll"
+          }
+        }
+      },
+      "TextCopy/6.2.1": {
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "7.0.0"
+        },
+        "runtime": {
+          "lib/net6.0/TextCopy.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0",
+            "localPath": "TextCopy.dll"
+          }
+        }
+      },
+      "Tmds.DBus.Protocol/0.21.3": {
+        "runtime": {
+          "lib/net8.0/Tmds.DBus.Protocol.dll": {
+            "assemblyVersion": "0.21.3.0",
+            "fileVersion": "0.21.3.0",
+            "localPath": "Tmds.DBus.Protocol.dll"
+          }
+        }
+      },
+      "UTF.Unknown/2.5.1": {
+        "runtime": {
+          "lib/netcoreapp3.0/UtfUnknown.dll": {
+            "assemblyVersion": "2.0.0.0",
+            "fileVersion": "2.0.664.0",
+            "localPath": "UtfUnknown.dll"
+          }
+        }
+      },
+      "WanaKana-net/1.0.0": {
+        "runtime": {
+          "lib/netstandard2.0/WanaKanaNet.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0",
+            "localPath": "WanaKanaNet.dll"
+          }
+        }
+      },
+      "YamlDotNet/15.1.2": {
+        "runtime": {
+          "lib/net8.0/YamlDotNet.dll": {
+            "assemblyVersion": "15.0.0.0",
+            "fileVersion": "15.1.2.0",
+            "localPath": "YamlDotNet.dll"
+          }
+        }
+      },
+      "OpenUtau.Core/1.0.0": {
+        "dependencies": {
+          "BunLabs.NAudio.Flac": "2.0.1",
+          "Concentus.Oggfile": "1.0.6",
+          "Ignore": "0.1.50",
+          "K4os.Hash.xxHash": "1.0.8",
+          "Melanchall.DryWetMidi": "7.2.0",
+          "Microsoft.ML.OnnxRuntime.DirectML": "1.23.0",
+          "NAudio": "2.2.1",
+          "NAudio.Core": "2.2.1",
+          "NAudio.Vorbis": "1.5.0",
+          "NLayer.NAudioSupport": "2.0.1",
+          "NWaves": "0.9.6",
+          "NeoLua": "1.3.19",
+          "NetMQ": "4.0.4.2",
+          "Newtonsoft.Json": "13.0.3",
+          "NumSharp": "0.30.0",
+          "Serilog": "4.1.0",
+          "SharpCompress": "0.48.1",
+          "System.Security.Cryptography.Xml": "10.0.10",
+          "TextCopy": "6.2.1",
+          "UTF.Unknown": "2.5.1",
+          "WanaKana-net": "1.0.0",
+          "YamlDotNet": "15.1.2",
+          "csharp-kana": "1.0.2",
+          "csharp-pinyin": "1.0.0"
+        },
+        "runtime": {
+          "OpenUtau.Core.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "OpenUtau.Plugin.Builtin/1.0.0": {
+        "dependencies": {
+          "OpenUtau.Core": "1.0.0"
+        },
+        "runtime": {
+          "OpenUtau.Plugin.Builtin.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "OpenUtau - DELTA SYNTH/1.2.1": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "AsyncIO/0.1.69": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-xyXJLi+wjy6AtIyWXHXJkPS0gItqVT4lg5w++7bA5YEjugYKdrFMGxCo6KUJ1yYwjriLQJ1g35LDljZs3Q90XQ==",
+      "path": "asyncio/0.1.69",
+      "hashPath": "asyncio.0.1.69.nupkg.sha512"
+    },
+    "Avalonia/11.3.18": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-2C4UxhWUObWGgYKWic1x5BMMWGJP6SElb91WeOxs+X/iR26rtkqpxFFwwo50FXS9AyYnHfk8QKXDEfe7oT/kZA==",
+      "path": "avalonia/11.3.18",
+      "hashPath": "avalonia.11.3.18.nupkg.sha512"
+    },
+    "Avalonia.Angle.Windows.Natives/2.1.25547.20250602": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-ZL0VLc4s9rvNNFt19Pxm5UNAkmKNylugAwJPX9ulXZ6JWs/l6XZihPWWTyezaoNOVyEPU8YbURtW7XMAtqXH5A==",
+      "path": "avalonia.angle.windows.natives/2.1.25547.20250602",
+      "hashPath": "avalonia.angle.windows.natives.2.1.25547.20250602.nupkg.sha512"
+    },
+    "Avalonia.Controls.ColorPicker/11.3.18": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-gcl2yQLQpS38Ur9MduD98GXzYaZEbwzYhaBmTh7Hp0YyXI4B2FlXXPdB4nijPI6WuoYdM24akdnF6uCeWL6q3Q==",
+      "path": "avalonia.controls.colorpicker/11.3.18",
+      "hashPath": "avalonia.controls.colorpicker.11.3.18.nupkg.sha512"
+    },
+    "Avalonia.Controls.DataGrid/11.3.13": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-Omfzm3l5ZJQHe1dCuvvadV3LkGmCzImnfOKtoXcDH632jDSwMKRGJ7S+uZRhmu7aBzRxL7PrpIfo4wdDGuzmWA==",
+      "path": "avalonia.controls.datagrid/11.3.13",
+      "hashPath": "avalonia.controls.datagrid.11.3.13.nupkg.sha512"
+    },
+    "Avalonia.Desktop/11.3.18": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-bilMPa5vYiis6fbNovb6esKytBnOCEGojBa1XFegLCRHCP6g6PvZwS0XF/YOAGkENRlHG8dI7lohOpQ9bIkq1g==",
+      "path": "avalonia.desktop/11.3.18",
+      "hashPath": "avalonia.desktop.11.3.18.nupkg.sha512"
+    },
+    "Avalonia.Diagnostics/11.3.18": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-LQpL/zsaHpJ+mM1/ABmjPCQJbyyhtmTYuiPDCwTM6GVzyUne2InauVjAlFY5FaxgoHUx2ZDAkfJn3vdHn1/gsQ==",
+      "path": "avalonia.diagnostics/11.3.18",
+      "hashPath": "avalonia.diagnostics.11.3.18.nupkg.sha512"
+    },
+    "Avalonia.FreeDesktop/11.3.18": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-aUwv8BNruRUOaUfMu4U3uibIUS60/rSHgGOhd8zBkLkpxY3JFJvgRbeq5ZzHIyKXCuKi18PO00YHAgCarp3wdw==",
+      "path": "avalonia.freedesktop/11.3.18",
+      "hashPath": "avalonia.freedesktop.11.3.18.nupkg.sha512"
+    },
+    "Avalonia.Native/11.3.18": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-8g53DROFW6wVJAnTsE1Iu5bdZO5r0oqxbdbMQODs1QDYCK2IU/y/x/vQVKCYOvqxl4tXkzU9tExv8XqSGPWthQ==",
+      "path": "avalonia.native/11.3.18",
+      "hashPath": "avalonia.native.11.3.18.nupkg.sha512"
+    },
+    "Avalonia.ReactiveUI/11.3.9": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-Butgdd/wqpZ9QFHAaoOC8qOMTryYoIPeCXrXrV6qf5At4lCEkqcmAe1pRmdqpgeA4e4t19tjbXMElKj28jmhPg==",
+      "path": "avalonia.reactiveui/11.3.9",
+      "hashPath": "avalonia.reactiveui.11.3.9.nupkg.sha512"
+    },
+    "Avalonia.Remote.Protocol/11.3.18": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-vw+6ZfgTuu72dA9aVWn6u56t2nrBd5MoMU0wo/qI9XJAl/c0oYYphIvwLvJP1JorubQY4UE3d0ac8ULBhrGBiA==",
+      "path": "avalonia.remote.protocol/11.3.18",
+      "hashPath": "avalonia.remote.protocol.11.3.18.nupkg.sha512"
+    },
+    "Avalonia.Skia/11.3.18": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-/B4aXmNRNjG8I5U/a1xJI+bIi0XO6DDzS3mBrIKlVnJRY2CyZiUeESRQXLnIU77Z9TvqkUROs+D47s085YjFtA==",
+      "path": "avalonia.skia/11.3.18",
+      "hashPath": "avalonia.skia.11.3.18.nupkg.sha512"
+    },
+    "Avalonia.Themes.Fluent/11.3.18": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-+Q/TJoynD0zNuu5w2gD+xcTl7GNKJFxlPYAndRLs/mTDrNbbsvv/271WyIysbMPsXSjCyBDp7RCZzQkpD6x5Bg==",
+      "path": "avalonia.themes.fluent/11.3.18",
+      "hashPath": "avalonia.themes.fluent.11.3.18.nupkg.sha512"
+    },
+    "Avalonia.Themes.Simple/11.3.18": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-aDCqBg6NnvUJOd9Ejt49htV6vwUIOV6K8jTNm7/bp9NqNr3h3xDR1vkw+Q48hm+ee8v6Gm4jiBy3g9O8k7Yv2w==",
+      "path": "avalonia.themes.simple/11.3.18",
+      "hashPath": "avalonia.themes.simple.11.3.18.nupkg.sha512"
+    },
+    "Avalonia.Win32/11.3.18": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-eioUHkM2PeLPETd1aEks3rvb9plbba6buIrNdrqCpwE/qgHKUjvRNBd5mUQfAbGgTLiAes524gB8uUMDhrsJVQ==",
+      "path": "avalonia.win32/11.3.18",
+      "hashPath": "avalonia.win32.11.3.18.nupkg.sha512"
+    },
+    "Avalonia.X11/11.3.18": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-m4Ki/G5Dovnq+6QzfS0iGbK8V77Q6oTjToMLOB0CxPCCrl3Oxywh6kIjuGJDPaN6kopMmjxlNShyQf+vPYL+JA==",
+      "path": "avalonia.x11/11.3.18",
+      "hashPath": "avalonia.x11.11.3.18.nupkg.sha512"
+    },
+    "BunLabs.NAudio.Flac/2.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-UTUYeIlVl5FmTyATW01MuUilF3nIwdqGOslVXOW/O0My86wSYbzPs2M3hEWurGaxw1mHeTs9M/kavpjInywF0g==",
+      "path": "bunlabs.naudio.flac/2.0.1",
+      "hashPath": "bunlabs.naudio.flac.2.0.1.nupkg.sha512"
+    },
+    "Concentus/2.2.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-sgNsQ7f2HZ2c7hz9Sj/9LVyRrQerGoq6Wx8BoKW3XpQ7vPXjHIe9FxQwG6rg0TdVL8KOICjE2DQDk/FkVwZm4g==",
+      "path": "concentus/2.2.1",
+      "hashPath": "concentus.2.2.1.nupkg.sha512"
+    },
+    "Concentus.Oggfile/1.0.6": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-bDd8vP5+cmXR7D93w3LP75sJTClTb8GLOnSaLGtjb9z+wTQ//6UfNo0mtGU5Vtpgf9nYYgn7pFbPAC6isaewyw==",
+      "path": "concentus.oggfile/1.0.6",
+      "hashPath": "concentus.oggfile.1.0.6.nupkg.sha512"
+    },
+    "csharp-kana/1.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-6uzjfbKU23FQdZsBTVmguIblWmzUndoci2OJOHcU7BydiHAF31ci900SUjYX6uqsvI5fJ89YlfehWHYEotNLPA==",
+      "path": "csharp-kana/1.0.2",
+      "hashPath": "csharp-kana.1.0.2.nupkg.sha512"
+    },
+    "csharp-pinyin/1.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-9cgf08SfATaRJ+YgdZcEFTq5ZpER6ci7CITvYfdT4FKv9Kdnk0xWdn0pKyrr42wPJlAgEiw6Mx17+oSK/I0YQQ==",
+      "path": "csharp-pinyin/1.0.0",
+      "hashPath": "csharp-pinyin.1.0.0.nupkg.sha512"
+    },
+    "DynamicData/8.4.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-Mn1+fU/jqxgONEJq8KLQPGWEi7g/hUVTbjZyn4QM0sWWDAVOHPO9WjXWORSykwdfg/6S3GM15qsfz+2EvO+QAQ==",
+      "path": "dynamicdata/8.4.1",
+      "hashPath": "dynamicdata.8.4.1.nupkg.sha512"
+    },
+    "HarfBuzzSharp/8.3.1.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-tLZN66oe/uiRPTZfrCU4i8ScVGwqHNh5MHrXj0yVf4l7Mz0FhTGnQ71RGySROTmdognAs0JtluHkL41pIabWuQ==",
+      "path": "harfbuzzsharp/8.3.1.1",
+      "hashPath": "harfbuzzsharp.8.3.1.1.nupkg.sha512"
+    },
+    "HarfBuzzSharp.NativeAssets.Win32/8.3.1.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-UsJtQsfAJoFDZrXc4hCUfRPMqccfKZ0iumJ/upcUjz/cmsTgVFGNEL5yaJWmkqsuFYdMWbj/En5/kS4PFl9hBA==",
+      "path": "harfbuzzsharp.nativeassets.win32/8.3.1.1",
+      "hashPath": "harfbuzzsharp.nativeassets.win32.8.3.1.1.nupkg.sha512"
+    },
+    "Ignore/0.1.50": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-nr7/KaY5KP9QvCEf478w1k9Yz+dXQZKLEAsjfhIjuneScmyLvMKoItPL6OfkNODeCrINtHEBt8A7q7yETS1PQQ==",
+      "path": "ignore/0.1.50",
+      "hashPath": "ignore.0.1.50.nupkg.sha512"
+    },
+    "K4os.Hash.xxHash/1.0.8": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-Wp2F7BamQ2Q/7Hk834nV9vRQapgcr8kgv9Jvfm8J3D0IhDqZMMl+a2yxUq5ltJitvXvQfB8W6K4F4fCbw/P6YQ==",
+      "path": "k4os.hash.xxhash/1.0.8",
+      "hashPath": "k4os.hash.xxhash.1.0.8.nupkg.sha512"
+    },
+    "Material.Avalonia/3.13.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-1sAEpPBke4grOS+jz0jhZEUzqwgMCi36dvZKLOtOLehD3+OJlnYZKe7oPJstrCM7zWQZuJr0LPRha4Rv1SztvA==",
+      "path": "material.avalonia/3.13.3",
+      "hashPath": "material.avalonia.3.13.3.nupkg.sha512"
+    },
+    "Melanchall.DryWetMidi/7.2.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-iSD5vQtWqte5yq745x7WCY+HVhaQH4jt9Usf/3d3rDDf7uL7zJZNbJfSkF83XNQagc5io5NFAAQVm2EuI4CGWQ==",
+      "path": "melanchall.drywetmidi/7.2.0",
+      "hashPath": "melanchall.drywetmidi.7.2.0.nupkg.sha512"
+    },
+    "MicroCom.Runtime/0.11.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-MEnrZ3UIiH40hjzMDsxrTyi8dtqB5ziv3iBeeU4bXsL/7NLSal9F1lZKpK+tfBRnUoDSdtcW3KufE4yhATOMCA==",
+      "path": "microcom.runtime/0.11.0",
+      "hashPath": "microcom.runtime.0.11.0.nupkg.sha512"
+    },
+    "Microsoft.Extensions.DependencyInjection.Abstractions/7.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-h3j/QfmFN4S0w4C2A6X7arXij/M/OVw3uQHSOFxnND4DyAzO1F9eMX7Eti7lU/OkSthEE0WzRsfT/Dmx86jzCw==",
+      "path": "microsoft.extensions.dependencyinjection.abstractions/7.0.0",
+      "hashPath": "microsoft.extensions.dependencyinjection.abstractions.7.0.0.nupkg.sha512"
+    },
+    "Microsoft.Extensions.ObjectPool/10.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-bpeCq0IYmVLACyEUMzFIOQX+zZUElG1t+nu1lSxthe7B+1oNYking7b91305+jNB6iwojp9fqTY9O+Nh7ULQxg==",
+      "path": "microsoft.extensions.objectpool/10.0.0",
+      "hashPath": "microsoft.extensions.objectpool.10.0.0.nupkg.sha512"
+    },
+    "Microsoft.ML.OnnxRuntime.DirectML/1.23.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-zABy69z74iSy05blZpfFsm+3IETjJniH1hDwzAkSyrjKW96yHnEQ1zd1P+LNmuQWqnLkx5LOKQQ487ndsxTX6g==",
+      "path": "microsoft.ml.onnxruntime.directml/1.23.0",
+      "hashPath": "microsoft.ml.onnxruntime.directml.1.23.0.nupkg.sha512"
+    },
+    "Microsoft.ML.OnnxRuntime.Managed/1.23.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-YsvYcS/Xp9QW/cN+FqC7iX66eIaV1hDeNLgCjNzY/4HU3J9+ABk5QVqpP1YgcSmOouVq0+/IBR0FYKvLYQi+4g==",
+      "path": "microsoft.ml.onnxruntime.managed/1.23.0",
+      "hashPath": "microsoft.ml.onnxruntime.managed.1.23.0.nupkg.sha512"
+    },
+    "NaCl.Net/0.1.13": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-AVg1455RQnyTy6tiessudruZHvbl70QWRPyx3og2I1Fei17LDNc7Z3DRgqN2+PsySBui/1EDP4A7adhQXydi6g==",
+      "path": "nacl.net/0.1.13",
+      "hashPath": "nacl.net.0.1.13.nupkg.sha512"
+    },
+    "NAudio/2.2.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-c0DzwiyyklM0TP39Y7RObwO3QkWecgM6H60ikiEnsV/aEAJPbj5MFCLaD8BSfKuZe0HGuh9GRGWWlJmSxDc9MA==",
+      "path": "naudio/2.2.1",
+      "hashPath": "naudio.2.2.1.nupkg.sha512"
+    },
+    "NAudio.Asio/2.2.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-hQglyOT5iT3XuGpBP8ZG0+aoqwRfidHjTNehpoWwX0g6KJEgtH2VaqM2nuJ2mheKZa/IBqB4YQTZVvrIapzfOA==",
+      "path": "naudio.asio/2.2.1",
+      "hashPath": "naudio.asio.2.2.1.nupkg.sha512"
+    },
+    "NAudio.Core/2.2.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-GgkdP6K/7FqXFo7uHvoqGZTJvW4z8g2IffhOO4JHaLzKCdDOUEzVKtveoZkCuUX8eV2HAINqi7VFqlFndrnz/g==",
+      "path": "naudio.core/2.2.1",
+      "hashPath": "naudio.core.2.2.1.nupkg.sha512"
+    },
+    "NAudio.Midi/2.2.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-6r23ylGo5aeP02WFXsPquz0T0hFJWyh+7t++tz19tc3Kr38NHm+Z9j+FiAv+xkH8tZqXJqus9Q8p6u7bidIgbw==",
+      "path": "naudio.midi/2.2.1",
+      "hashPath": "naudio.midi.2.2.1.nupkg.sha512"
+    },
+    "NAudio.Vorbis/1.5.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-llJMmUnFf0FGf4G1FKNftxt+Vc1CvBCSul0Ugbv/RahGbpKF2p+ujSEJHybPjl9b4FjbK8O2vRFIcRGcVfAooA==",
+      "path": "naudio.vorbis/1.5.0",
+      "hashPath": "naudio.vorbis.1.5.0.nupkg.sha512"
+    },
+    "NAudio.Wasapi/2.2.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-lFfXoqacZZe0WqNChJgGYI+XV/n/61LzPHT3C1CJp4khoxeo2sziyX5wzNYWeCMNbsWxFvT3b3iXeY1UYjBhZw==",
+      "path": "naudio.wasapi/2.2.1",
+      "hashPath": "naudio.wasapi.2.2.1.nupkg.sha512"
+    },
+    "NAudio.WinForms/2.2.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-DlDkewY1myY0A+3NrYRJD+MZhZV0yy1mNF6dckB27IQ9XCs/My5Ip8BZcoSHOsaPSe2GAjvoaDnk6N9w8xTv7w==",
+      "path": "naudio.winforms/2.2.1",
+      "hashPath": "naudio.winforms.2.2.1.nupkg.sha512"
+    },
+    "NAudio.WinMM/2.2.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-xFHRFwH4x6aq3IxRbewvO33ugJRvZFEOfO62i7uQJRUNW2cnu6BeBTHUS0JD5KBucZbHZaYqxQG8dwZ47ezQuQ==",
+      "path": "naudio.winmm/2.2.1",
+      "hashPath": "naudio.winmm.2.2.1.nupkg.sha512"
+    },
+    "NeoLua/1.3.19": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-oIcg+VmruHutTFrR8YxzLtXK1scoN6EAXWyu0oqTOA9pu9/KiqHZ9ITusNR0fLytjFoJi2qyZPn2hPSSwjm4PQ==",
+      "path": "neolua/1.3.19",
+      "hashPath": "neolua.1.3.19.nupkg.sha512"
+    },
+    "NetMQ/4.0.4.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-5D94aeuwYHQPEVCCyFjeSwJ1fLLtpQtoJG76cjbWN4S/35txgjiZ4LYdH2zOzUNr9n918Hu6ALZyoHDimkQAAg==",
+      "path": "netmq/4.0.4.2",
+      "hashPath": "netmq.4.0.4.2.nupkg.sha512"
+    },
+    "NetSparkleUpdater.SparkleUpdater/2.2.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-Z1/N0yILht9ExwSm+Zml+l25VmV4qh2NXdHQQS5yBwNTOwU4f4zLAjJnhF854zS5WY2MAsaAO20KQramTORHig==",
+      "path": "netsparkleupdater.sparkleupdater/2.2.3",
+      "hashPath": "netsparkleupdater.sparkleupdater.2.2.3.nupkg.sha512"
+    },
+    "Newtonsoft.Json/13.0.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-HrC5BXdl00IP9zeV+0Z848QWPAoCr9P3bDEZguI+gkLcBKAOxix/tLEAAHC+UvDNPv4a2d18lOReHMOagPa+zQ==",
+      "path": "newtonsoft.json/13.0.3",
+      "hashPath": "newtonsoft.json.13.0.3.nupkg.sha512"
+    },
+    "NLayer/2.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-0nhnDRx98u7zXXbPIF11QYYupOOOQ9W22eqoyQyXn/gitRXbf9zAK8YfxyqS1Ix+TSqJv8EPNSk3VkDb7fChKw==",
+      "path": "nlayer/2.0.1",
+      "hashPath": "nlayer.2.0.1.nupkg.sha512"
+    },
+    "NLayer.NAudioSupport/2.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-KA+x8ukKPSq6cyNK4CSKiPw8Wl2RNNbME/t8fohqnldHcaHAmj8+zKMu3L5eAsM+ewhBPFQHC8qVIGXM/C83PQ==",
+      "path": "nlayer.naudiosupport/2.0.1",
+      "hashPath": "nlayer.naudiosupport.2.0.1.nupkg.sha512"
+    },
+    "NumSharp/0.30.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-1f8m2B/m/ZSsICaqLszspCyA9/sTHK7wBKEH5KsxGg/r3QCYTc2HnfYOGMeCytvo8/j0v/umn5umLOLhdExlFA==",
+      "path": "numsharp/0.30.0",
+      "hashPath": "numsharp.0.30.0.nupkg.sha512"
+    },
+    "NVorbis/0.10.4": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-WYnil3DhQHzjCY0dM9I2B3r1vWip90AOuQd25KE4NrjPQBg0tBJFluRLm5YPnO5ZLDmwrfosY8jCQGQRmWI/Pg==",
+      "path": "nvorbis/0.10.4",
+      "hashPath": "nvorbis.0.10.4.nupkg.sha512"
+    },
+    "NWaves/0.9.6": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-LoVqwy6zgeF9l7Yj9rihWtnbbytZOLtU/lFqjnZRFqOCLJQj60NLFPA4nfvAdzK3PsHeShIw7AuJZKSElcYOGg==",
+      "path": "nwaves/0.9.6",
+      "hashPath": "nwaves.0.9.6.nupkg.sha512"
+    },
+    "Portable.BouncyCastle/1.9.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-eZZBCABzVOek+id9Xy04HhmgykF0wZg9wpByzrWN7q8qEI0Qen9b7tfd7w8VA3dOeesumMG7C5ZPy0jk7PSRHw==",
+      "path": "portable.bouncycastle/1.9.0",
+      "hashPath": "portable.bouncycastle.1.9.0.nupkg.sha512"
+    },
+    "ReactiveUI/20.1.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-9hNPknWjijnaSWs6auypoXqUptPZcRpUypF+cf1zD50fgW+SEoQda502N3fVZ2eWPcaiUad+z6GaLwOWmUVHNw==",
+      "path": "reactiveui/20.1.1",
+      "hashPath": "reactiveui.20.1.1.nupkg.sha512"
+    },
+    "ReactiveUI.Fody/19.5.41": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-bh6OH1WsSHf/ryUVaPnI6LWl1+lrCvq4L/AoHpzPXCKxtR4p0ogPVONnkq0jYgSQ55x7YNCVkthBKeb6uUSbpg==",
+      "path": "reactiveui.fody/19.5.41",
+      "hashPath": "reactiveui.fody.19.5.41.nupkg.sha512"
+    },
+    "Serilog/4.1.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-u1aZI8HZ62LWlq5dZLFwm6jMax/sUwnWZSw5lkPsCt518cJBxFKoNmc7oSxe5aA5BgSkzy9rzwFGR/i/acnSPw==",
+      "path": "serilog/4.1.0",
+      "hashPath": "serilog.4.1.0.nupkg.sha512"
+    },
+    "Serilog.Sinks.Console/6.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-fQGWqVMClCP2yEyTXPIinSr5c+CBGUvBybPxjAGcf7ctDhadFhrQw03Mv8rJ07/wR5PDfFjewf2LimvXCDzpbA==",
+      "path": "serilog.sinks.console/6.0.0",
+      "hashPath": "serilog.sinks.console.6.0.0.nupkg.sha512"
+    },
+    "Serilog.Sinks.Debug/3.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-4BzXcdrgRX7wde9PmHuYd9U6YqycCC28hhpKonK7hx0wb19eiuRj16fPcPSVp0o/Y1ipJuNLYQ00R3q2Zs8FDA==",
+      "path": "serilog.sinks.debug/3.0.0",
+      "hashPath": "serilog.sinks.debug.3.0.0.nupkg.sha512"
+    },
+    "Serilog.Sinks.File/6.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-lxjg89Y8gJMmFxVkbZ+qDgjl+T4yC5F7WSLTvA+5q0R04tfKVLRL/EHpYoJ/MEQd2EeCKDuylBIVnAYMotmh2A==",
+      "path": "serilog.sinks.file/6.0.0",
+      "hashPath": "serilog.sinks.file.6.0.0.nupkg.sha512"
+    },
+    "SharpCompress/0.48.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-SqGaVniGG943Gph/gHhUQUiZPyC7y0tXZyMf0/B2oGsMav9dqs7JJOuUA+xOkwKYaWM2TM7aZQjNK91f4bX71A==",
+      "path": "sharpcompress/0.48.1",
+      "hashPath": "sharpcompress.0.48.1.nupkg.sha512"
+    },
+    "SkiaSharp/2.88.9": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-3MD5VHjXXieSHCleRLuaTXmL2pD0mB7CcOB1x2kA1I4bhptf4e3R27iM93264ZYuAq6mkUyX5XbcxnZvMJYc1Q==",
+      "path": "skiasharp/2.88.9",
+      "hashPath": "skiasharp.2.88.9.nupkg.sha512"
+    },
+    "SkiaSharp.NativeAssets.Win32/2.88.9": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-wb2kYgU7iy84nQLYZwMeJXixvK++GoIuECjU4ECaUKNuflyRlJKyiRhN1MAHswvlvzuvkrjRWlK0Za6+kYQK7w==",
+      "path": "skiasharp.nativeassets.win32/2.88.9",
+      "hashPath": "skiasharp.nativeassets.win32.2.88.9.nupkg.sha512"
+    },
+    "Splat/15.1.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-RHDTdF90FwVbRia2cmuIzkiVoETqnXSB2dDBBi/I35HWXqv4OKGqoMcfcd6obMvO2OmmY5PjU1M62K8LkJafAA==",
+      "path": "splat/15.1.1",
+      "hashPath": "splat.15.1.1.nupkg.sha512"
+    },
+    "System.Numerics.Tensors/9.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-hyJB4UlpAi19Xr9AXzu2NuagKC4lPfHObNMEAA0HmqFz2rX7wKgzeYzO/jM/eBHDhnUGFFEjk5cOoJaxqg5J4A==",
+      "path": "system.numerics.tensors/9.0.0",
+      "hashPath": "system.numerics.tensors.9.0.0.nupkg.sha512"
+    },
+    "System.Reactive/6.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-rHaWtKDwCi9qJ3ObKo8LHPMuuwv33YbmQi7TcUK1C264V3MFnOr5Im7QgCTdLniztP3GJyeiSg5x8NqYJFqRmg==",
+      "path": "system.reactive/6.0.1",
+      "hashPath": "system.reactive.6.0.1.nupkg.sha512"
+    },
+    "System.Security.Cryptography.Pkcs/10.0.10": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-KG8t5RHczdgB3IWvRndpI0nE1DSo7ikDYSDbITxfgRFyIvnYiKzuPjaZOsPnwFQ1aOGUl9sEulJul9wlHLEUoA==",
+      "path": "system.security.cryptography.pkcs/10.0.10",
+      "hashPath": "system.security.cryptography.pkcs.10.0.10.nupkg.sha512"
+    },
+    "System.Security.Cryptography.Xml/10.0.10": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-Mz6Y+s+uMQKj1H2BUF0OhlmaOQkLgSG34/IrUaBDirYBQ6bgwcFvO/XtXWcoDlBLFoFB0uKqDNhybHOd+fQK1A==",
+      "path": "system.security.cryptography.xml/10.0.10",
+      "hashPath": "system.security.cryptography.xml.10.0.10.nupkg.sha512"
+    },
+    "System.ServiceModel.Primitives/10.0.652802": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-ULfGNl75BNXkpF42wNV2CDXJ64dUZZEa8xO2mBsc4tqbW9QjruxjEB6bAr4Z/T1rNU+leOztIjCJQYsBGFWYlw==",
+      "path": "system.servicemodel.primitives/10.0.652802",
+      "hashPath": "system.servicemodel.primitives.10.0.652802.nupkg.sha512"
+    },
+    "TextCopy/6.2.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-ryejViUBmHQ2XMie2AiRBn7KVKu2Gh/hqrctGSAUf1BufwfPjr+MWuACNBaiG+40TMbWRDJZgV73Tpl9hggeRw==",
+      "path": "textcopy/6.2.1",
+      "hashPath": "textcopy.6.2.1.nupkg.sha512"
+    },
+    "Tmds.DBus.Protocol/0.21.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-hDwB8WsQoyALQKqIbwzS68UKdlnafDm4T/DkO/JrA/YIneP/rKv96SxYPVXeh3FP4i/SXfShrYftKLtciJAIlw==",
+      "path": "tmds.dbus.protocol/0.21.3",
+      "hashPath": "tmds.dbus.protocol.0.21.3.nupkg.sha512"
+    },
+    "UTF.Unknown/2.5.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-KhZuBaO55PIu6m4bkij3ZQL8qwVyofwFpNnyguXFjwxJlbfYX+dRn8tGy/PjTK6I4UJm8ujkJFvBLaV7MKltTA==",
+      "path": "utf.unknown/2.5.1",
+      "hashPath": "utf.unknown.2.5.1.nupkg.sha512"
+    },
+    "WanaKana-net/1.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-dKRJ8JwDQVBdFwHM0Tinyg2SnYEvwH62+kcdZtO+SLkf/poG22+v3k3Cf2qAOfxMpGN7IBf9FT+TD9DTWRPIyA==",
+      "path": "wanakana-net/1.0.0",
+      "hashPath": "wanakana-net.1.0.0.nupkg.sha512"
+    },
+    "YamlDotNet/15.1.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-qeX0XhzOIcQEvnI5JxnPaIwcINwyY4Qy/LXhSfsdHkFrl9F41AT52UFfy2nIE7kgrhMg+cP7xuS+GtPJhmHmTA==",
+      "path": "yamldotnet/15.1.2",
+      "hashPath": "yamldotnet.15.1.2.nupkg.sha512"
+    },
+    "OpenUtau.Core/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "OpenUtau.Plugin.Builtin/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

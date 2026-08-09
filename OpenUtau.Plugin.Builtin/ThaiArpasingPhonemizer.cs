@@ -4,8 +4,11 @@
 // ==========================================
 // Made And Checked By DELTA SYNTH & Gemini AI
 // Original by Patiphat Wongyai
-// Version: v.4.6
-// History/Summary: Implemented Safety Position Buffer (prevPos + 10) to prevent phoneme overlapping. Multi-syllable + note support.
+// Version: v.4.7
+// History/Summary:
+// v.4.7 (Consonant Space Widening - ขยายพื้นที่พยัญชนะ): เพิ่มพื้นที่ leading consonant จาก 12% เป็น 18%,
+//   diphthong จาก 5/10% เป็น 8/14%, secondary consonant จาก 12% เป็น 18% เพื่อให้เสียงพยัญชนะออกมาชัดเจนขึ้น.
+// v.4.6: Implemented Safety Position Buffer (prevPos + 10) to prevent phoneme overlapping. Multi-syllable + note support.
 // ==========================================
 
 using System;
@@ -113,17 +116,16 @@ namespace OpenUtau.Plugin.Builtin {
 
         private void LoadCustomDictionary() {
             if (isDictLoaded) return;
+            ThaiDictionaryManager.ApplyToDictionary(CustomDictionary);
             try {
-                string[] dictPaths = {
-                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Dictionaries", "dsdict-th.txt"),
-                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Dictionary", "words_th.txt"),
-                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Dictionary", "words_th_dict.txt")
-                };
-                foreach (var path in dictPaths) {
-                    LoadDictFile(path);
+                if (singer != null && !string.IsNullOrEmpty(singer.Location)) {
+                    string[] singerDicts = { "dsdict-th.txt", "th_arpasing_custom_dict.txt", "th_custom_dict.txt" };
+                    foreach (var dict in singerDicts) {
+                        LoadDictFile(Path.Combine(singer.Location, dict));
+                    }
                 }
             } catch (Exception ex) {
-                Log.Error(ex, "Failed to load custom dictionary.");
+                Log.Error(ex, "Failed to load singer custom dictionary.");
             }
             isDictLoaded = true;
         }
@@ -265,23 +267,27 @@ namespace OpenUtau.Plugin.Builtin {
 
                     int position = 0;
                     if (i == 0) {
-                        // ควบคุมรอยต่อ [C C] และการเริ่มเสียง ให้มีช่วง pre-utterance
-                        position = -Math.Min((int)(noteDuration * 0.12), 100);
+                        // ควบคุมรอยต่อ [C C] และการเริ่มเสียง ให้มีช่วง pre-utterance ที่กว้างขึ้น (v4.7)
+                        position = -Math.Min((int)(noteDuration * 0.18), 140);
                     } else if (alias.EndsWith("-")) {
                         // ปรับการผลักเสียงช่วงพัก (-)
-                        position = Math.Max((int)(noteDuration * 0.90), noteDuration - 15); 
+                        position = Math.Max((int)(noteDuration * 0.90), noteDuration - 15);
                     } else if (X != null && alias == $"{V} {X}") {
-                        position = Math.Max((int)(noteDuration * 0.70), noteDuration - 120); 
+                        // ending consonant: ≈ 30-35% of note for clear coda (v4.7)
+                        position = Math.Max((int)(noteDuration * 0.65), noteDuration - 150);
                     } else if (Dip != null && i == 1) {
-                        position = Math.Min((int)(noteDuration * 0.05), 30);
+                        // diphthong first part wider (v4.7: 5%→8%)
+                        position = Math.Min((int)(noteDuration * 0.08), 50);
                     } else if (Dip != null && i == 2) {
-                        position = Math.Min((int)(noteDuration * 0.10), 60);
+                        // diphthong second part wider (v4.7: 10%→14%)
+                        position = Math.Min((int)(noteDuration * 0.14), 80);
                     } else if (i == aliases.Count - 1 && aliases.Count >= 3) {
                         position = Math.Max((int)(noteDuration * 0.80), noteDuration - 60);
                     } else if (i == 1) {
-                        position = Math.Min((int)(noteDuration * 0.12), 80);
+                        // secondary consonant wider (v4.7: 12%→18%)
+                        position = Math.Min((int)(noteDuration * 0.18), 110);
                     } else {
-                        position = Math.Min((int)(noteDuration * 0.20), 110);
+                        position = Math.Min((int)(noteDuration * 0.25), 140);
                     }
 
                     int absolutePosition = position + noteStartPos;

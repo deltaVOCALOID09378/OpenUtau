@@ -11,6 +11,13 @@ using OpenUtau.Core.Ustx;
 using OpenUtau.Core.Util;
 using Serilog;
 
+// ============================================================================
+// Made And Checked By DELTA SYNTH & Gemini AI
+// Original by Patiphat Wongyai (Delta)
+// Version: 1.2 | Date: 2026-07-28
+// Description: ปรับการหน่วงโหลดคลังเสียงให้ยกเลิกได้โดยไม่พักเธรดโดยไม่จำเป็น
+// ============================================================================
+
 namespace OpenUtau.Core {
     public class SingerManager : SingletonBase<SingerManager> {
         public Dictionary<string, USinger> Singers { get; private set; } = new Dictionary<string, USinger>();
@@ -61,14 +68,18 @@ namespace OpenUtau.Core {
             var oldCancellation = Interlocked.Exchange(ref reloadCancellation, newCancellation);
             if (oldCancellation != null) {
                 oldCancellation.Cancel();
-                oldCancellation.Dispose();
             }
-            Task.Run(() => {
-                Thread.Sleep(200);
-                if (newCancellation.IsCancellationRequested) {
-                    return;
+
+            _ = Task.Run(async () => {
+                try {
+                    await Task.Delay(200, newCancellation.Token).ConfigureAwait(false);
+                    Refresh();
+                } catch (OperationCanceledException) when (newCancellation.IsCancellationRequested) {
+                    // การร้องขอครั้งใหม่เข้ามาแทนที่งานเดิม จึงยกเลิกงานหน่วงเดิมตามปกติ
+                } finally {
+                    Interlocked.CompareExchange(ref reloadCancellation, null, newCancellation);
+                    newCancellation.Dispose();
                 }
-                Refresh();
             });
         }
 

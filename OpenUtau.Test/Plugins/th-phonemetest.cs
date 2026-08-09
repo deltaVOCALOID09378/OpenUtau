@@ -13,7 +13,7 @@ namespace OpenUtau.Plugins {
         
         protected override Phonemizer CreatePhonemizer() {
             // เรียกใช้งานคลาส Phonemizer ภาษาไทยที่คุณเดลต้าสร้างไว้
-            return new ThaiVCCV_CVVCPhonemizerDelta();
+            return new ThaiVCCVPhonemizer();
         }
 
         [Theory]
