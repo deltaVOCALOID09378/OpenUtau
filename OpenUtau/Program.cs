@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -18,6 +19,9 @@ using Serilog;
 
 namespace OpenUtau.App {
     public class Program {
+        // ตัวแปร Mutex สำหรับตรวจสอบการทำงานซ้ำซ้อนแบบรวดเร็ว (Fast Single Instance Check)
+        private static Mutex appMutex;
+
         // โค้ดเริ่มต้นการทำงาน ห้ามเรียกใช้ Avalonia หรือ API ภายนอกก่อนที่ AppMain จะถูกเรียก
         [STAThread]
         public static void Main(string[] args) {
@@ -26,13 +30,13 @@ namespace OpenUtau.App {
             InitLogging();
 
             string processName = Process.GetCurrentProcess().ProcessName;
-            if (processName != "dotnet") {
-                // ตรวจสอบว่าโปรแกรมถูกเปิดซ้ำซ้อนหรือไม่
-                var exists = Process.GetProcessesByName(processName).Count() > 1;
-                if (exists) {
-                    Log.Information($"โปรเซส {processName} กำลังทำงานอยู่แล้ว ระบบกำลังดำเนินการปิดการทำงานที่ซ้ำซ้อน");
-                    return;
-                }
+            
+            // [เข้าโปรแกรมไว] ใช้ Mutex ตรวจสอบการเปิดโปรแกรมซ้ำแทนการสแกน Process ซึ่งทำงานได้เร็วกว่ามาก
+            appMutex = new Mutex(true, "OpenUtau_SingleInstance_Mutex", out bool createdNew);
+            
+            if (processName != "dotnet" && !createdNew) {
+                Log.Information($"โปรเซส {processName} กำลังทำงานอยู่แล้ว ระบบกำลังดำเนินการปิดการทำงานที่ซ้ำซ้อนอย่างรวดเร็ว");
+                return; // ออกทันที
             }
 
             // บันทึกข้อมูลระบบลงใน Log เพื่อการตรวจสอบปัญหา
@@ -53,11 +57,19 @@ namespace OpenUtau.App {
                 Log.Fatal(ex, "เกิดข้อผิดพลาดร้ายแรงขณะรันโปรแกรม");
             } finally {
                 if (!OS.IsMacOS()) {
-                    // ทำความสะอาดระบบเครือข่ายสำหรับ Windows/Linux
+                    // ทำความสะอาดระบบเครือข่ายสำหรับ Windows/Linux แบบไม่รอ (Non-blocking)
                     NetMQ.NetMQConfig.Cleanup(/*block=*/false);
                 }
+                
+                // [ออกไว] บังคับให้เขียน Log ที่ค้างอยู่ลงไฟล์และปิดการทำงานของระบบ Log ทันที
+                Log.CloseAndFlush();
+                
+                // คืนค่า Mutex เพื่อเคลียร์ทรัพยากรระบบอย่างสมบูรณ์
+                if (createdNew) {
+                    appMutex.ReleaseMutex();
+                    appMutex.Dispose();
+                }
             }
-            Log.Information($"ปิดการทำงานเรียบร้อย");
         }
 
         // การตั้งค่า Avalonia สำหรับส่วนติดต่อผู้ใช้ (UI)
@@ -68,17 +80,27 @@ namespace OpenUtau.App {
             string thaiFonts = "Leelawadee UI, Tahoma, Sarabun, Ayuthaya, Thonburi, FreeSans";
 
             if (OS.IsLinux()) {
-                using Process process = Process.Start(new ProcessStartInfo("fc-match")
-                {
-                    ArgumentList = { "-f", "%{family}" },
-                    RedirectStandardOutput = true
-                })!;
-                process.WaitForExit();
-
-                string fontFamily = process.StandardOutput.ReadToEnd();
-                if (!string.IsNullOrEmpty(fontFamily)) {
-                    string[] fontFamilies = fontFamily.Split(',');
-                    fontOptions.DefaultFamilyName = $"{fontFamilies[0]}, {thaiFonts}";
+                try {
+                    using Process process = Process.Start(new ProcessStartInfo("fc-match")
+                    {
+                        ArgumentList = { "-f", "%{family}" },
+                        RedirectStandardOutput = true,
+                        UseShellExecute = false
+                    })!;
+                    
+                    // [เข้าโปรแกรมไว] ใส่ Timeout ป้องกันโปรแกรมค้างหากคำสั่ง fc-match ของ Linux ตอบสนองช้า
+                    if (process.WaitForExit(500)) { 
+                        string fontFamily = process.StandardOutput.ReadToEnd().Trim();
+                        if (!string.IsNullOrEmpty(fontFamily)) {
+                            string[] fontFamilies = fontFamily.Split(',');
+                            fontOptions.DefaultFamilyName = $"{fontFamilies[0]}, {thaiFonts}";
+                        }
+                    } else {
+                        // หากหมดเวลา ให้ข้ามไปใช้ค่า Default ทันที
+                        fontOptions.DefaultFamilyName = thaiFonts;
+                    }
+                } catch {
+                    fontOptions.DefaultFamilyName = thaiFonts; // Fallback เมื่อเกิด Error
                 }
             } else if (OS.IsMacOS()) {
                 // สำหรับ macOS เน้นฟอนต์ที่แสดงผลภาษาไทยและญี่ปุ่นได้ชัดเจน
