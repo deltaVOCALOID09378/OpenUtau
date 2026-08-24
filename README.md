@@ -1,6 +1,6 @@
-# OpenUtau (DELTA SYNTH Edition)
+# Thai OpenUtau
 
-**OpenUtau** คือโปรแกรมแก้ไขเสียงร้อง (Editor) แบบโอเพนซอร์สและใช้งานฟรี ที่ถูกสร้างขึ้นมาเพื่อยกระดับประสบการณ์ของผู้ใช้งานในชุมชน UTAU ให้ทันสมัยและมีประสิทธิภาพสูงสุด
+**Thai OpenUtau** คือโปรแกรมแก้ไขเสียงร้อง (Editor) แบบโอเพนซอร์สและใช้งานฟรี ที่ถูกสร้างขึ้นมาเพื่อยกระดับประสบการณ์ของผู้ใช้งานในชุมชน UTAU ให้ทันสมัยและมีประสิทธิภาพสูงสุด
 
 [![สถานะการสร้าง](https://img.shields.io/github/actions/workflow/status/stakira/OpenUtau/build.yml?style=for-the-badge)](https://github.com/stakira/OpenUtau/actions/workflows/build.yml)
 [![Discord](https://img.shields.io/discord/551606189386104834?style=for-the-badge&label=discord&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/UfpMnqMmEM)
@@ -10,9 +10,9 @@
 
 คุณสามารถดาวน์โหลดเวอร์ชันล่าสุดสำหรับระบบปฏิบัติการต่างๆ ได้ที่นี่:
 
-*   **Windows:** [ดาวน์โหลด x64]
-*   **macOS:** [ดาวน์โหลด DMG (x64)]
-*   **Linux:** [ดาวน์โหลด tar.gz (x64)]
+*   **Windows:** [ดาวน์โหลด x64](https://github.com/stakira/OpenUtau/releases/latest/download/OpenUtau-win-x64.zip) | [ดาวน์โหลด x86](https://github.com/stakira/OpenUtau/releases/latest/download/OpenUtau-win-x86.zip)
+*   **macOS:** [ดาวน์โหลด DMG (x64)](https://github.com/stakira/OpenUtau/releases/latest/download/OpenUtau-osx-x64.dmg)
+*   **Linux:** [ดาวน์โหลด tar.gz (x64)](https://github.com/stakira/OpenUtau/releases/latest/download/OpenUtau-linux-x64.tar.gz)
 
 > **ข้อแนะนำสำคัญ:** เพื่อการใช้งานที่สมบูรณ์แบบที่สุด ผมขอแนะนำให้คุณศึกษาคู่มือผ่าน [Github Wiki](https://github.com/stakira/OpenUtau/wiki) โดยเฉพาะหัวใจหลักอย่าง **Phonemizers** และ **Resamplers** ครับ
 
