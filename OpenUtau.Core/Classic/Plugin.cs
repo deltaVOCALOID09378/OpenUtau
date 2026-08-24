@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.IO;
 using OpenUtau.Core.Util;
 
@@ -19,17 +20,28 @@ namespace OpenUtau.Classic {
             }
             string winePath = Preferences.Default.WinePath;
             string ext = Path.GetExtension(Executable).ToLowerInvariant();
-            string validatedWinePath = string.Empty;
             bool useWine = !OS.IsWindows()
                 && !string.IsNullOrEmpty(winePath)
-                && (ext == ".exe" || ext == ".bat")
-                && Path.IsPathRooted(winePath)
-                && File.Exists(winePath);
+                && (ext == ".exe" || ext == ".bat");
+            string resolvedWinePath = string.Empty;
             if (useWine) {
-                validatedWinePath = Path.GetFullPath(winePath);
+                string[] wineNames = { "wine", "wine64", "wine32", "wine32on64" };
+                foreach (string wineName in wineNames) {
+                    string candidate = OS.WhereIs(wineName);
+                    if (!string.IsNullOrEmpty(candidate)
+                        && Path.IsPathRooted(candidate)
+                        && File.Exists(candidate)
+                        && candidate.EndsWith(wineName, StringComparison.Ordinal)) {
+                        resolvedWinePath = Path.GetFullPath(candidate);
+                        break;
+                    }
+                }
+                if (string.IsNullOrEmpty(resolvedWinePath)) {
+                    throw new FileNotFoundException("Wine executable not found.");
+                }
             }
             var startInfo = new ProcessStartInfo() {
-                FileName = useWine ? validatedWinePath : Executable,
+                FileName = useWine ? resolvedWinePath : Executable,
                 Arguments = useWine ? $"\"{Executable}\" \"{tempFile}\"" : $"\"{tempFile}\"",
                 Environment = {{"LANG", "ja_JP.utf8"}},
                 WorkingDirectory = Path.GetDirectoryName(Executable),
