@@ -1,4 +1,11 @@
-﻿using System;
+// ============================================================================
+// Made And Checked By DELTA SYNTH & Gemini AI
+// Original by PRINTmov
+// Version: 1.1 
+// Description: Advanced Thai VCCV Phonemizer with Consonant Expansion & Robust Fallback.
+// ============================================================================
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -10,7 +17,7 @@ using OpenUtau.Core.Ustx;
 using Serilog;
 
 namespace OpenUtau.Plugin.Builtin {
-    [Phonemizer("Thai VCCV Phonemizer", "TH VCCV", "PRINTmov", language: "TH")]
+    [Phonemizer("Thai VCCV Phonemizer (ไทย VCCV)", "TH VCCV", "PRINTmov & DELTA SYNTH", language: "TH")]
     public class ThaiVCCVPhonemizer : Phonemizer {
 
         readonly string[] vowels = new string[] {
@@ -84,7 +91,6 @@ namespace OpenUtau.Plugin.Builtin {
             }
 
             var phonemes = new List<Phoneme>();
-
             List<string> tests = new List<string>();
 
             string prevTemp = "";
@@ -92,12 +98,14 @@ namespace OpenUtau.Plugin.Builtin {
                 prevTemp = prevNeighbour.Value.lyric;
             }
             var prevTh = ParseInput(prevTemp);
-
             var noteTh = ParseInput(currentLyric);
 
+            // CV and CCV processing with Automated Fallback
             if (noteTh.Consonant != null && noteTh.Dipthong == null && noteTh.Vowel != null) {
                 if (checkOtoUntilHit(new string[] { noteTh.Consonant + noteTh.Vowel }, note, out var tempOto)) {
                     tests.Add(tempOto.Alias);
+                } else if (checkOtoUntilHit(new string[] { noteTh.Vowel }, note, out tempOto)) {
+                    tests.Add(tempOto.Alias); // Fallback to Vowel
                 }
             } else if (noteTh.Consonant != null && noteTh.Dipthong != null && noteTh.Vowel != null) {
                 if (checkOtoUntilHit(new string[] { noteTh.Consonant + noteTh.Dipthong + noteTh.Vowel }, note, out var tempOto)) {
@@ -112,6 +120,7 @@ namespace OpenUtau.Plugin.Builtin {
                 }
             }
 
+            // Vowel Only processing
             if (noteTh.Consonant == null && noteTh.Vowel != null) {
                 if (prevTh.EndingConsonant != null && checkOtoUntilHit(new string[] { prevTh.EndingConsonant + noteTh.Vowel }, note, out var tempOto)) {
                     tests.Add(tempOto.Alias);
@@ -122,9 +131,12 @@ namespace OpenUtau.Plugin.Builtin {
                 }
             }
 
+            // VC ending processing with Fallback
             if (noteTh.EndingConsonant != null && noteTh.Vowel != null) {
                 if (checkOtoUntilHit(new string[] { noteTh.Vowel + noteTh.EndingConsonant }, note, out var tempOto)) {
                     tests.Add(tempOto.Alias);
+                } else if (checkOtoUntilHit(new string[] { noteTh.Vowel + "-" }, note, out tempOto)) {
+                    tests.Add(tempOto.Alias); // Fallback to Vowel-
                 }
             } else if (nextNeighbour != null && noteTh.Vowel != null) {
                 var nextTh = ParseInput(nextNeighbour.Value.lyric);
@@ -182,11 +194,11 @@ namespace OpenUtau.Plugin.Builtin {
                         var nextAttr = nextNeighbour.Value.phonemeAttributes?.FirstOrDefault(attr => attr.index == 0) ?? default;
                         if (singer.TryGetMappedOto(nextCheck, nextNeighbour.Value.tone + nextAttr.toneShift, nextAttr.voiceColor, out var nextOto)) {
                             if (oto.Overlap > 0) {
-                                vcPosition = noteDuration - MsToTick(nextOto.Overlap) - MsToTick(nextOto.Preutter);
+                                // Consonant Expansion: Multiplier 1.8x applied for highly natural articulation
+                                vcPosition = noteDuration - (int)(MsToTick(nextOto.Overlap) * 1.8) - MsToTick(nextOto.Preutter);
                             }
                         }
                     }
-
 
                     if (noteTh.Dipthong == null || tests.Count <= 2) {
                         if (i == 1) {
@@ -258,7 +270,6 @@ namespace OpenUtau.Plugin.Builtin {
 
             return (consonant, diphthong, vowel, endingConsonant);
         }
-
 
         public string WordToPhonemes(string input) {
             input = input.Replace(" ", "");
