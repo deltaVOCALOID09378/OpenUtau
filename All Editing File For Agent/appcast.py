@@ -1,4 +1,5 @@
 import argparse
+import re
 from datetime import datetime
 
 def main():
@@ -13,6 +14,9 @@ def main():
     appcast_os = args.os
     appcast_rid = args.rid
     appcast_file = args.file
+
+    if not re.fullmatch(r'[A-Za-z0-9._-]+', appcast_rid):
+        parser.error("Invalid RID. Only letters, numbers, '.', '_' and '-' are allowed.")
 
     xml = '''<?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
