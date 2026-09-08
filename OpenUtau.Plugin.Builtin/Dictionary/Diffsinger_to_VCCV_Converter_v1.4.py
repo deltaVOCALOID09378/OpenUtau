@@ -17,10 +17,14 @@ def get_base_path():
     return os.path.dirname(os.path.abspath(__file__))
 
 # Setup Logging
-app_data = os.getenv('APPDATA') or os.path.expanduser('~')
-log_dir = os.path.join(app_data, 'OptiLink_Diffsinger_VCCV')
+safe_base_dir = os.path.abspath(os.path.normpath(get_base_path()))
+log_dir = os.path.abspath(os.path.normpath(os.path.join(safe_base_dir, 'OptiLink_Diffsinger_VCCV')))
+if os.path.commonpath([safe_base_dir, log_dir]) != safe_base_dir:
+    raise ValueError("Invalid log directory path.")
 os.makedirs(log_dir, exist_ok=True)
-log_file = os.path.join(log_dir, 'log.txt')
+log_file = os.path.abspath(os.path.normpath(os.path.join(log_dir, 'log.txt')))
+if os.path.commonpath([log_dir, log_file]) != log_dir:
+    raise ValueError("Invalid log file path.")
 
 with open(log_file, 'w', encoding='utf-8') as f:
     f.write(f"--- Log Session Started: {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
