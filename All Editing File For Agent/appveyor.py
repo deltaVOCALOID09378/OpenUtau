@@ -1,8 +1,14 @@
 import os
 import sys
+import re
+import subprocess
 from datetime import datetime
 
 appcast_ver = os.environ.get('APPVEYOR_BUILD_VERSION')
+
+
+def is_safe_version(version):
+    return version is not None and re.fullmatch(r"[A-Za-z0-9._-]+", version) is not None
 
 
 def write_appcast(appcast_os, appcast_rid, appcast_file):
@@ -54,7 +60,9 @@ if sys.platform == 'win32':
     os.system("copy /y OpenUtau.Plugin.Builtin\\bin\\Release\\netstandard2.1\\OpenUtau.Plugin.Builtin.dll bin\\win-x64")
     write_appcast("windows", "win-x64", "OpenUtau-win-x64.zip")
 
-    os.system("makensis -DPRODUCT_VERSION=%s OpenUtau.nsi" % (appcast_ver))
+    if not is_safe_version(appcast_ver):
+        raise ValueError("Unsafe APPVEYOR_BUILD_VERSION value")
+    subprocess.run(["makensis", f"-DPRODUCT_VERSION={appcast_ver}", "OpenUtau.nsi"], check=True)
     write_appcast("windows", "win-x64-installer", "OpenUtau-win-x64.exe")
 
 elif sys.platform == 'darwin':
