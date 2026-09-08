@@ -38,6 +38,8 @@ def write_appcast(appcast_os, appcast_rid, appcast_file):
 
 if sys.platform == 'win32':
     if appcast_ver is not None:
+        if not is_safe_version(appcast_ver):
+            raise ValueError("Unsafe APPVEYOR_BUILD_VERSION value")
         os.system("git tag build/%s 2>&1" % (appcast_ver))
         os.system("git push origin build/%s 2>&1" % (appcast_ver))
 
@@ -60,8 +62,6 @@ if sys.platform == 'win32':
     os.system("copy /y OpenUtau.Plugin.Builtin\\bin\\Release\\netstandard2.1\\OpenUtau.Plugin.Builtin.dll bin\\win-x64")
     write_appcast("windows", "win-x64", "OpenUtau-win-x64.zip")
 
-    if not is_safe_version(appcast_ver):
-        raise ValueError("Unsafe APPVEYOR_BUILD_VERSION value")
     subprocess.run(["makensis", f"-DPRODUCT_VERSION={appcast_ver}", "OpenUtau.nsi"], check=True)
     write_appcast("windows", "win-x64-installer", "OpenUtau-win-x64.exe")
 
