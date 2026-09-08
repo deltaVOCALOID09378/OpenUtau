@@ -117,13 +117,20 @@ def main():
             show_msg("Error - No File Found", "ไม่พบไฟล์ข้อมูล กรุณาลากไฟล์พจนานุกรมที่ต้องการแปลงมาวางทับลงบนไฟล์ .exe ครับ")
             return 1 # v1.4 - 2026-07-18 - ปิดโปรแกรมและส่งรหัสข้อผิดพลาดระดับ 1
             
+    allowed_input_root = os.path.abspath(os.getcwd()) # v1.4 - 2026-07-18 - กำหนดโฟลเดอร์รากที่อนุญาตสำหรับอินพุตจากผู้ใช้
     for file_path in target_files: # v1.4 - 2026-07-18 - วนลูปอ่านรายชื่อไฟล์เป้าหมายทั้งหมดทีละไฟล์
-        if not os.path.exists(file_path): # v1.4 - 2026-07-18 - ยืนยันการมีอยู่ของไฟล์บนหน่วยความจำอีกครั้ง
-            print(f"[ERROR / ข้อผิดพลาด] File not found / ไม่พบไฟล์อ้างอิง: {file_path}") # v1.4 - 2026-07-18 - แจ้งเตือนเมื่อไฟล์สูญหายระหว่างดำเนินการ
+        normalized_file_path = os.path.abspath(os.path.normpath(file_path)) # v1.4 - 2026-07-18 - ปรับรูปแบบพาธให้เป็นมาตรฐานก่อนตรวจสอบความปลอดภัย
+        if os.path.commonpath([allowed_input_root, normalized_file_path]) != allowed_input_root: # v1.4 - 2026-07-18 - ป้องกัน path traversal ออกจากโฟลเดอร์ที่อนุญาต
+            print(f"[ERROR / ข้อผิดพลาด] Invalid path / พาธไม่ปลอดภัย: {file_path}") # v1.4 - 2026-07-18 - แจ้งเตือนเมื่อพบพาธที่อยู่นอกขอบเขตที่กำหนด
+            error_count += 1
+            continue # v1.4 - 2026-07-18 - ข้ามการทำงานไปยังไฟล์ลำดับถัดไป
+
+        if not os.path.exists(normalized_file_path): # v1.4 - 2026-07-18 - ยืนยันการมีอยู่ของไฟล์บนหน่วยความจำอีกครั้ง
+            print(f"[ERROR / ข้อผิดพลาด] File not found / ไม่พบไฟล์อ้างอิง: {normalized_file_path}") # v1.4 - 2026-07-18 - แจ้งเตือนเมื่อไฟล์สูญหายระหว่างดำเนินการ
             error_count += 1
             continue # v1.4 - 2026-07-18 - ข้ามการทำงานไปยังไฟล์ลำดับถัดไป
             
-        dir_name = os.path.dirname(file_path) # v1.4 - 2026-07-18 - สกัดเฉพาะชื่อโฟลเดอร์จากพาธไฟล์เต็ม
+        dir_name = os.path.dirname(normalized_file_path) # v1.4 - 2026-07-18 - สกัดเฉพาะชื่อโฟลเดอร์จากพาธไฟล์เต็มที่ผ่านการตรวจสอบแล้ว
         if not dir_name: # v1.4 - 2026-07-18 - กรณีที่รันผ่านบรรทัดคำสั่งโดยตรงและไม่มีพาธ
             dir_name = "." # v1.4 - 2026-07-18 - อ้างอิงโฟลเดอร์ปัจจุบันแทนที่
             
