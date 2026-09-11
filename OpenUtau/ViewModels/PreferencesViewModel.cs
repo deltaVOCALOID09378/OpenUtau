@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -146,6 +146,7 @@ namespace OpenUtau.App.ViewModels {
         [Reactive] public partial bool RememberVsqx { get; set; }
         [Reactive] public partial bool Wayland { get; set; }
         public string WinePath => Preferences.Default.WinePath;
+        [Reactive] public partial bool DefaultSnapCurve { get; set; }
 
         private readonly ObservableAsPropertyHelper<bool> highThreads;
         private readonly ObservableAsPropertyHelper<bool> showOnnxGpu;
@@ -244,6 +245,7 @@ namespace OpenUtau.App.ViewModels {
             RememberMid = Preferences.Default.RememberMid;
             RememberUst = Preferences.Default.RememberUst;
             RememberVsqx = Preferences.Default.RememberVsqx;
+            DefaultSnapCurve = Preferences.Default.DefaultSnapCurve;
             ClearCacheOnQuit = Preferences.Default.ClearCacheOnQuit;
             Wayland = Preferences.Default.UseWayland;
 
@@ -427,6 +429,8 @@ namespace OpenUtau.App.ViewModels {
                 value => Preferences.Default.RememberUst = value);
             PersistOn(this.WhenAnyValue(vm => vm.RememberVsqx),
                 value => Preferences.Default.RememberVsqx = value);
+            PersistOn(this.WhenAnyValue(vm => vm.DefaultSnapCurve),
+                value => Preferences.Default.DefaultSnapCurve = value);
             PersistOn(this.WhenAnyValue(vm => vm.ClearCacheOnQuit),
                 value => Preferences.Default.ClearCacheOnQuit = value);
             PersistOn(this.WhenAnyValue(vm => vm.DiffSingerSteps),
