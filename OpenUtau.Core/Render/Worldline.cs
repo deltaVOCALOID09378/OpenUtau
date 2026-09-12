@@ -319,15 +319,19 @@ namespace OpenUtau.Core.Render {
             }
             static void Validate(SynthRequest request) {
                 int frame_ms = 10;
-                var total_ms = 1000.0 * request.sample_length / request.sample_fs;
-                var in_start_ms = request.offset;
+                var total_ms = 1000.0 * request.sample_length / request.sample_fs; 
+                var in_start_ms = (double)request.offset;
                 var in_length_ms = request.cut_off < 0
                     ? -request.cut_off
                     : total_ms - request.offset - request.cut_off;
-                int in_start_frame = (int)(in_start_ms / frame_ms);
-                int in_length_frame = (int)(Math.Ceiling(in_start_ms + in_length_ms) / frame_ms) - in_start_frame;
-                if ((in_start_frame + in_length_frame) * frame_ms * request.sample_fs > request.sample_length * 1000.0) {
+                int in_start_frame = (int)(in_start_ms / frame_ms); 
+                int in_length_frame = (int)Math.Ceiling((in_start_ms + in_length_ms) / (double)frame_ms) - in_start_frame;
+                if (in_start_ms + in_length_ms > total_ms + 0.1) {
                     throw new CutOffExceedDurationError();
+                }
+                int max_frames = (int)Math.Ceiling(total_ms / (double)frame_ms);
+                if (in_start_frame + in_length_frame > max_frames) {
+                    in_length_frame = max_frames - in_start_frame;
                 }
                 if (in_length_frame <= 0) {
                     throw new CutOffBeforeOffsetError();
@@ -583,7 +587,7 @@ namespace OpenUtau.Core.Render {
                 var spEnvDst = np.ndarray(new Shape(tDst.Length, spEnvSrc.shape[1]), typeof(double));
                 var apDst = np.ndarray(new Shape(tDst.Length, apSrc.shape[1]), typeof(double));
                 for (int i = 0; i < tDst.Length; ++i) {
-                    double pos = tDst[i];
+                    double pos = Math.Max(0, Math.Min(tDst[i], f0Src.Length - 1.0));
                     int index = (int)Math.Floor(pos);
                     double frac = pos - index;
                     if (index + 1 < f0Src.Length) {

@@ -417,7 +417,9 @@ namespace OpenUtau.Classic {
                 string path = Path.Combine(dir, group.Key);
                 if (!File.Exists(path)) {
                     if (NFDFiles.TryGetValue(group.Key.Normalize(), out string NFDFile)) {
-                        group.ForEach(oto => oto.Wav = NFDFile);
+                        foreach (var oto in group) {
+                            oto.Wav = NFDFile;
+                        }
                     } else {
                         Log.Error($"Sound file missing. {path}");
                         foreach (Oto oto in group) {
@@ -525,29 +527,7 @@ namespace OpenUtau.Classic {
                         writer.Write('\n');
                         continue;
                     }
-                    writer.Write(oto.Wav);
-                    writer.Write('=');
-                    writer.Write(oto.Alias);
-                    writer.Write(',');
-                    if (oto.Offset != 0) {
-                        writer.Write(oto.Offset);
-                    }
-                    writer.Write(',');
-                    if (oto.Consonant != 0) {
-                        writer.Write(oto.Consonant);
-                    }
-                    writer.Write(',');
-                    if (oto.Cutoff != 0) {
-                        writer.Write(oto.Cutoff);
-                    }
-                    writer.Write(',');
-                    if (oto.Preutter != 0) {
-                        writer.Write(oto.Preutter);
-                    }
-                    writer.Write(',');
-                    if (oto.Overlap != 0) {
-                        writer.Write(oto.Overlap);
-                    }
+                    writer.Write($"{oto.Wav}={oto.Alias},{oto.Offset},{oto.Consonant},{oto.Cutoff},{oto.Preutter},{oto.Overlap}");
                     writer.Write('\n');
                 }
                 writer.Flush();
